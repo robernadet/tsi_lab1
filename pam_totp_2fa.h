@@ -4,15 +4,10 @@
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <security/pam_appl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include "libcotp.h"
 
 #define SECRET_KEY_FILE "/etc/security/totp_secrets"
 
-int generate_totp_seed(char *seed);
-int validate_totp_code(const char *seed, const char *input_code);
+PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv);
+PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv);
 
 #endif /* PAM_TOTP_H */
