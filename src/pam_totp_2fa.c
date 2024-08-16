@@ -1,4 +1,4 @@
-#include "pam_totp_2fa.h"
+#include "../include/pam_totp_2fa.h"
 
 PAM_EXTERN  pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
