@@ -3,7 +3,7 @@
 PAM_EXTERN  pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
   const char *user;
-  pam_get_user(pamh, &user, NULL);
+  pam_get_user(pamh, &user, 1);
 
   // Aquí iría la lógica para validar el TOTP
   // Si la validación es exitosa:

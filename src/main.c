@@ -1,11 +1,14 @@
 
 #include <stdio.h>
-#include <libcotp.h>
+#include <cotp.h>
 
 static int generateSeed() {
+  //generar codigo aleatorio y pasarlo a base32
+  
 }
 
 static int showSeed() {
+  //
 }
 
 int main(int argc, char *argv[]) {
