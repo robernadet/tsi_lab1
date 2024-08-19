@@ -32,7 +32,7 @@ void saveSeed(char *base32, char *username) {
     createSeedFileIfNotExists();
 
     // Establece la máscara de permisos para que el owner solo tenga permisos de r y w
-    umask(066);
+    umask(077);
 
     // Abre el archivo global para añadir la nueva seed (modo "append")
     FILE *file = fopen(GLOBAL_SEED_FILE, "a");
@@ -42,7 +42,7 @@ void saveSeed(char *base32, char *username) {
     }
 
     // Escribe la seed y el nombre de usuario en una nueva línea
-    if (fprintf(file, "%s, %s\n", username, base32) < 0) {
+    if (fprintf(file, "%s,%s\n", username, base32) < 0) {
         perror("Error al escribir el seed en el archivo global");
         fclose(file);
         return;
