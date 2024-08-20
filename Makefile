@@ -1,43 +1,38 @@
-# Variables
+# Makefile
+
+# Compilador
 CC = gcc
+
+# Opciones de compilación
 CFLAGS = -Wall -Iinclude
-LDFLAGS = -lpam -lcotp -lssl -lcrypto
 
-# Archivos fuente
-PAM_SRC = src/pam_totp_2fa.c
-MAIN_SRC = src/main.c
+# Opciones de enlazado
+LDFLAGS = -lpam -lcotp -lssl -lcrypto -lcurl
 
-# Archivos objeto
-PAM_OBJ = pam_totp_2fa.o
-MAIN_OBJ = main.o
+# Directorios
+LIBDIR = lib
+INCLUDEDIR = include
 
-# Nombre del módulo PAM
-PAM_MODULE = pam_totp_2fa.so
+# Archivos de objetos
+OBJS = main.o
 
-# Nombre del ejecutable principal
-MAIN_EXEC = main
+# Objetivo principal
+all: pam_totp_2fa.so main
 
-# Regla por defecto
-all: $(PAM_MODULE) $(MAIN_EXEC)
+# Compilar la biblioteca PAM
+pam_totp_2fa.so: pam_totp_2fa.o
+	$(CC) -shared -o $@ $^ -lpam -lcotp -lssl -lcrypto -L$(LIBDIR)
 
-# Compilar el módulo PAM
-$(PAM_MODULE): $(PAM_OBJ)
-	$(CC) -shared -o $@ $(PAM_OBJ) $(LDFLAGS)
-
-# Compilar el programa principal
-$(MAIN_EXEC): $(MAIN_OBJ)
-	$(CC) -o $@ $(MAIN_OBJ) $(LDFLAGS)
-
-# Regla para compilar el módulo PAM en objeto
-$(PAM_OBJ): $(PAM_SRC)
-	$(CC) $(CFLAGS) -fPIC -c $< -o $@
-
-# Regla para compilar el programa principal en objeto
-$(MAIN_OBJ): $(MAIN_SRC)
+# Compilar el archivo de objetos
+main.o: src/main.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Limpiar archivos generados
+# Enlazar el ejecutable principal
+main: $(OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+# Limpiar los archivos generados
 clean:
-	rm -f $(PAM_OBJ) $(MAIN_OBJ) $(PAM_MODULE) $(MAIN_EXEC)
+	rm -f $(OBJS) pam_totp_2fa.so main
 
 .PHONY: all clean

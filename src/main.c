@@ -6,9 +6,11 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <openssl/rand.h> // Asegúrate de tener la librería OpenSSL
+#include <curl/curl.h>    // Necesitarás la librería cURL para generar la URL QR
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
 #define SECRET_LENGTH 16 // Longitud del secreto en bytes
+#define ISSUER "TOTP_2FA"   // Nombre de tu aplicación o servicio
 
 void createSeedFileIfNotExists()
 {
@@ -74,21 +76,23 @@ char *generate_random_secret()
   return base32_secret;
 }
 
-int generateSeed(const char *username)
+void generate_qr_code(const char *username, const char *base32_secret)
 {
-  char *base32 = generate_random_secret();
-  if (base32 == NULL)
-  {
-    return -1;
-  }
-  saveSeed(base32, username);
-  free(base32);
-  return 0;
+  char url[512];
+  snprintf(url, sizeof(url), "otpauth://totp/%s?secret=%s&issuer=%s", username, base32_secret, ISSUER);
+
+  char qr_code_url[1024];
+  snprintf(qr_code_url, sizeof(qr_code_url), "https://api.qrserver.com/v1/create-qr-code/?data=%s&size=200x200", curl_easy_escape(NULL, url, 0));
+
+  printf("Escanee el siguiente código QR con Google Authenticator:\n%s\n", qr_code_url);
 }
 
-void showSeed()
+char* generateSeed(const char *username)
 {
-  // Mostrar el seed almacenado (opcional si se requiere)
+  char *base32 = generate_random_secret();
+  saveSeed(base32, username);
+  free(base32);
+  return base32;
 }
 
 int main(int argc, char *argv[])
@@ -118,10 +122,11 @@ int main(int argc, char *argv[])
   scanf(" %c", &response);
   // Implementar la lógica basada en la respuesta
 
-  int code = generateSeed(username);
-  if (code == 0)
+  char* seed = generateSeed(username);
+  if (seed != NULL) 
   {
-    showSeed();
+
+    generate_qr_code(username, seed);
   }
   else
   {
