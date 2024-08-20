@@ -5,11 +5,9 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
+#include <security/pam_modules.h>
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
-#define TIME_STEP 30       // Periodo de tiempo en segundos
-#define TOLERANCE_WINDOW 1 // Ventana de tolerancia en pasos de tiempo
 
 // Función para leer la seed desde el archivo
 char *getSeedForUser(const char *username)
@@ -56,44 +54,52 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   }
 
   // Solicitar el código OTP al usuario
-  const char *otp_input;
-  retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **)&otp_input);
-  if (retval != PAM_SUCCESS || otp_input == NULL)
+  struct pam_conv *conv;
+  retval = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
+  if (retval != PAM_SUCCESS || conv == NULL)
   {
     free(seed);
     return PAM_AUTH_ERR;
   }
 
-  // Validar el código OTP dentro de una ventana de tolerancia
+  struct pam_message msg[1];
+  struct pam_response *resp = NULL;
+
+  msg[0].msg_style = PAM_PROMPT_ECHO_OFF;
+  msg[0].msg = "Ingrese el código OTP: ";
+
+  retval = conv->conv(1, msg, &resp, pamh);
+  if (retval != PAM_SUCCESS || resp == NULL || resp[0].resp == NULL)
+  {
+    free(seed);
+    return PAM_AUTH_ERR;
+  }
+
+  char otp_input[256];
+  snprintf(otp_input, sizeof(otp_input), "%s", resp[0].resp);
+  free(resp[0].resp);
+  free(resp);
+
+  // Generar el OTP usando el tiempo actual
   cotp_error_t err_code = NO_ERROR;
-  char *generated_otp = NULL;
-  int success = 0; // Para controlar si algún OTP coincide
+  char *generated_otp = get_totp_at(seed, time(NULL), 6, 30, SHA1, &err_code);
 
-  for (int i = -TOLERANCE_WINDOW; i <= TOLERANCE_WINDOW; i++)
+  if (err_code != NO_ERROR || generated_otp == NULL)
   {
-    // Usa la semilla codificada en base32 y pasa todos los parámetros requeridos
-    generated_otp = get_totp_at(seed, time(NULL) + i * TIME_STEP, 6,TIME_STEP, SHA1, &err_code);
-    if (err_code != NO_ERROR || generated_otp == NULL)
-    {
-      free(seed);
-      return PAM_AUTH_ERR;
-    }
-
-    printf("otp %s /n",generated_otp);
-    if (strcmp(otp_input, generated_otp) == 0)
-    {
-      success = 1;
-      break;
-    }
-    free(generated_otp); // Libera el OTP generado en esta iteración si no coincide
+    free(seed);
+    return PAM_AUTH_ERR;
   }
 
+  // Validar el código OTP
+  int auth_status = PAM_AUTH_ERR;
+  if (strcmp(otp_input, generated_otp) == 0)
+  {
+    auth_status = PAM_SUCCESS;
+  }
+
+  free(generated_otp);
   free(seed);
-  if (success)
-  {
-    return PAM_SUCCESS;
-  }
-  return PAM_AUTH_ERR;
+  return auth_status;
 }
 
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv)

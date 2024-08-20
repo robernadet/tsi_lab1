@@ -1,44 +1,15 @@
 #include <stdio.h>
+#include <cotp.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
 #include <pwd.h>
-#include <gcrypt.h>
-#include <cotp.h>
+#include <time.h>
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
-#define SEED_SIZE 20 // Longitud de la salida HMAC-SHA1 es de 20 bytes (160 bits)
 
 char *seed = NULL;
-
-// Inicializa Libgcrypt
-void initialize_libgcrypt()
-{
-  if (!gcry_check_version(GCRYPT_VERSION))
-  {
-    fprintf(stderr, "Error: versión de Libgcrypt incorrecta\n");
-    exit(EXIT_FAILURE);
-  }
-
-  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
-}
-
-// Función para generar una semilla aleatoria segura de 20 bytes
-char *generate_random_seed()
-{
-  char *random_seed = malloc(SEED_SIZE);
-  if (!random_seed)
-  {
-    fprintf(stderr, "Error al asignar memoria para la semilla\n");
-    return NULL;
-  }
-
-  // Generar la semilla utilizando un generador criptográficamente fuerte
-  gcry_randomize(random_seed, SEED_SIZE, GCRY_STRONG_RANDOM);
-
-  return random_seed;
-}
 
 void createSeedFileIfNotExists()
 {
@@ -63,7 +34,7 @@ void createSeedFileIfNotExists()
   }
 }
 
-void saveSeed(const char *base32, const char *username)
+void saveSeedAndTime(const char *base32, const char *username)
 {
   // Asegura que el archivo de seeds existe y tiene los permisos correctos
   createSeedFileIfNotExists();
@@ -79,8 +50,11 @@ void saveSeed(const char *base32, const char *username)
     return;
   }
 
-  // Escribe la seed y el nombre de usuario en una nueva línea
-  if (fprintf(file, "%s,%s\n", username, base32) < 0)
+  time_t t;
+
+  time(&t);                // Obtiene el tiempo actual
+
+  if (fprintf(file, "%s,%ld,%s\n", username, (long)t, base32) < 0)
   {
     perror("Error al escribir el seed en el archivo global");
     fclose(file);
@@ -96,29 +70,19 @@ void saveSeed(const char *base32, const char *username)
 
 int generateSeed(const char *username)
 {
-  initialize_libgcrypt();
-
-  // Generar un seed aleatorio seguro de 20 bytes
-  char *random_seed = generate_random_seed();
-  if (!random_seed)
-  {
-    return -1;
-  }
-
-  // Convertir la semilla aleatoria a una cadena codificada en base32
   cotp_error_t err_code = NO_ERROR;
-  char *base32 = base32_encode((unsigned char *)random_seed, SEED_SIZE, &err_code);
+
+  // Generar un seed codificado en base32 (aquí se usa una cadena fija como ejemplo)
+  char *base32 = base32_encode((unsigned char *)"ABCD", 4, &err_code);
 
   if (err_code != NO_ERROR)
   {
     printf("Error al generar el seed: %d\n", err_code);
-    free(random_seed);
     return -1;
   }
 
   saveSeed(base32, username);
-  free(random_seed); // Libera la memoria asignada para la semilla aleatoria
-  free(base32);
+  free(base32); // Libera la memoria asignada por base32_encode
   return 0;
 }
 
