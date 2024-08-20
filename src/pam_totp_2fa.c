@@ -8,6 +8,8 @@
 #include <security/pam_modules.h>
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
+#define PERIOD 30
+#define DIGITS 6
 
 // Función para leer la seed desde el archivo
 char *getSeedForUser(const char *username)
@@ -68,7 +70,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   msg[0].msg_style = PAM_PROMPT_ECHO_OFF;
   msg[0].msg = "Ingrese el código OTP: ";
 
-  retval = conv->conv(1, msg, &resp, pamh);
+  // Corregido aquí: se usa 'const struct pam_message **' para el tercer argumento
+  retval = conv->conv(1, (const struct pam_message **)&msg, &resp, pamh);
   if (retval != PAM_SUCCESS || resp == NULL || resp[0].resp == NULL)
   {
     free(seed);
@@ -82,7 +85,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   // Generar el OTP usando el tiempo actual
   cotp_error_t err_code = NO_ERROR;
-  char *generated_otp = get_totp_at(seed, time(NULL), 6, 30, SHA1, &err_code);
+  char *generated_otp = get_totp(seed, DIGITS, PERIOD, SHA1, &err_code);
 
   if (err_code != NO_ERROR || generated_otp == NULL)
   {

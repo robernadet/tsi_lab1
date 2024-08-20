@@ -1,46 +1,43 @@
-# Definir el compilador
+# Variables
 CC = gcc
+CFLAGS = -Wall -Iinclude
+LDFLAGS = -lpam -lcotp -lssl -lcrypto
 
-# Definir las banderas del compilador
-CFLAGS = -Wall -fPIC -I/usr/include/security -I/usr/local/include
+# Archivos fuente
+PAM_SRC = src/pam_totp_2fa.c
+MAIN_SRC = src/main.c
 
-# Definir las banderas del enlazador
-LDFLAGS = -L/usr/local/lib
+# Archivos objeto
+PAM_OBJ = pam_totp_2fa.o
+MAIN_OBJ = main.o
 
-# Bibliotecas a vincular
-LIBS = -lcotp -lgcrypt -lpam -lpam_misc
+# Nombre del módulo PAM
+PAM_MODULE = pam_totp_2fa.so
 
-# Definir el nombre del módulo PAM a generar
-PAM_TARGET = pam_totp_2fa.so
+# Nombre del ejecutable principal
+MAIN_EXEC = main
 
-# Definir el nombre del archivo ejecutable principal
-MAIN_TARGET = main
+# Regla por defecto
+all: $(PAM_MODULE) $(MAIN_EXEC)
 
-# Definir los archivos fuente
-PAM_SRCS = src/pam_totp_2fa.c
-MAIN_SRCS = src/main.c
+# Compilar el módulo PAM
+$(PAM_MODULE): $(PAM_OBJ)
+	$(CC) -shared -o $@ $(PAM_OBJ) $(LDFLAGS)
 
-# Definir el directorio de instalación de módulos PAM
-PAM_MODULE_DIR = /lib/security
+# Compilar el programa principal
+$(MAIN_EXEC): $(MAIN_OBJ)
+	$(CC) -o $@ $(MAIN_OBJ) $(LDFLAGS)
 
-# Regla para compilar todo (módulo PAM y ejecutable)
-all: $(PAM_TARGET) $(MAIN_TARGET)
+# Regla para compilar el módulo PAM en objeto
+$(PAM_OBJ): $(PAM_SRC)
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 
-# Regla para compilar el módulo PAM
-$(PAM_TARGET): $(PAM_SRCS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ $^ $(LIBS)
+# Regla para compilar el programa principal en objeto
+$(MAIN_OBJ): $(MAIN_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Regla para compilar el archivo principal
-$(MAIN_TARGET): $(MAIN_SRCS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
-
-# Regla para instalar el módulo PAM
-install: $(PAM_TARGET)
-	install -m 0644 $(PAM_TARGET) $(PAM_MODULE_DIR)
-
-# Regla para limpiar los archivos compilados
+# Limpiar archivos generados
 clean:
-	rm -f $(PAM_TARGET) $(MAIN_TARGET)
+	rm -f $(PAM_OBJ) $(MAIN_OBJ) $(PAM_MODULE) $(MAIN_EXEC)
 
-# Regla para limpiar y recompilar
-rebuild: clean all
+.PHONY: all clean
