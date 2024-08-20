@@ -5,8 +5,11 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
+#define TIME_STEP 30       // Periodo de tiempo en segundos
+#define TOLERANCE_WINDOW 1 // Ventana de tolerancia en pasos de tiempo
 
 // Función para leer la seed desde el archivo
 char *getSeedForUser(const char *username)
@@ -61,25 +64,35 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     return PAM_AUTH_ERR;
   }
 
-  // Validar el código OTP
+  // Validar el código OTP dentro de una ventana de tolerancia
   cotp_error_t err_code = NO_ERROR;
-  char *generated_otp = get_totp(seed, 6, 30, SHA1, &err_code); // Cambia 6 y 30 según tus requisitos
+  char *generated_otp = NULL;
+  int success = 0; // Para controlar si algún OTP coincide
 
-  if (err_code != NO_ERROR || generated_otp == NULL)
+  for (int i = -TOLERANCE_WINDOW; i <= TOLERANCE_WINDOW; i++)
   {
-    free(seed);
-    return PAM_AUTH_ERR;
+    // Usa la semilla codificada en base32 y pasa todos los parámetros requeridos
+    generated_otp = get_totp_at(seed, time(NULL) + i * TIME_STEP, 6,TIME_STEP, SHA1, &err_code);
+    if (err_code != NO_ERROR || generated_otp == NULL)
+    {
+      free(seed);
+      return PAM_AUTH_ERR;
+    }
+
+    printf("otp %s /n",generated_otp);
+    if (strcmp(otp_input, generated_otp) == 0)
+    {
+      success = 1;
+      break;
+    }
+    free(generated_otp); // Libera el OTP generado en esta iteración si no coincide
   }
 
-  if (strcmp(otp_input, generated_otp) == 0)
+  free(seed);
+  if (success)
   {
-    free(generated_otp);
-    free(seed);
     return PAM_SUCCESS;
   }
-
-  free(generated_otp);
-  free(seed);
   return PAM_AUTH_ERR;
 }
 
