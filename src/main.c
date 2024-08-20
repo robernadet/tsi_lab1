@@ -1,16 +1,43 @@
 #include <stdio.h>
-#include <cotp.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <unistd.h>
 #include <pwd.h>
-#include <openssl/rand.h> // Asegúrate de tener la librería OpenSSL
-#include <curl/curl.h>    // Necesitarás la librería cURL para generar la URL QR
+#include <gcrypt.h>
+#include <cotp.h>
+#include <qrencode.h>
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
-#define SECRET_LENGTH 16 // Longitud del secreto en bytes
-#define ISSUER "TOTP_2FA"   // Nombre de tu aplicación o servicio
+#define SEED_SIZE 20 // Longitud de la salida HMAC-SHA1 es de 20 bytes (160 bits)
+
+// Inicializa Libgcrypt
+void initialize_libgcrypt()
+{
+  if (!gcry_check_version(GCRYPT_VERSION))
+  {
+    fprintf(stderr, "Error: versión de Libgcrypt incorrecta\n");
+    exit(EXIT_FAILURE);
+  }
+
+  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
+}
+
+// Función para generar una semilla aleatoria segura de 20 bytes
+char *generate_random_seed()
+{
+  char *random_seed = malloc(SEED_SIZE);
+  if (!random_seed)
+  {
+    fprintf(stderr, "Error al asignar memoria para la semilla\n");
+    return NULL;
+  }
+
+  // Generar la semilla utilizando un generador criptográficamente fuerte
+  gcry_randomize(random_seed, SEED_SIZE, GCRY_STRONG_RANDOM);
+
+  return random_seed;
+}
 
 void createSeedFileIfNotExists()
 {
@@ -37,62 +64,93 @@ void createSeedFileIfNotExists()
 
 void saveSeed(const char *base32, const char *username)
 {
+  // Asegura que el archivo de seeds existe y tiene los permisos correctos
   createSeedFileIfNotExists();
+
+  // Establece la máscara de permisos para que el owner solo tenga permisos de r y w
   umask(077);
+
+  // Abre el archivo global para añadir la nueva seed (modo "append")
   FILE *file = fopen(GLOBAL_SEED_FILE, "a");
   if (file == NULL)
   {
     perror("Error al abrir el archivo global para guardar el seed");
     return;
   }
+
+  // Escribe la seed y el nombre de usuario en una nueva línea
   if (fprintf(file, "%s,%s\n", username, base32) < 0)
   {
     perror("Error al escribir el seed en el archivo global");
     fclose(file);
     return;
   }
+
   fclose(file);
-  printf("Seed guardado para el usuario %s en el archivo global: %s\n", username, base32);
+
+  printf("Seed guardado para el usuario %s en el archivo global.\n", username);
 }
 
-char *generate_random_secret()
+char *generateSeed(const char *username)
 {
-  unsigned char buf[SECRET_LENGTH];
-  if (RAND_bytes(buf, sizeof(buf)) != 1)
+  initialize_libgcrypt();
+
+  // Generar un seed aleatorio seguro de 20 bytes
+  char *random_seed = generate_random_seed();
+  if (!random_seed)
   {
-    perror("Error al generar el secreto aleatorio");
     return NULL;
   }
 
-  cotp_error_t err_code;
-  char *base32_secret = base32_encode(buf, sizeof(buf), &err_code);
+  // Convertir la semilla aleatoria a una cadena codificada en base32
+  cotp_error_t err_code = NO_ERROR;
+  char *base32 = base32_encode((unsigned char *)random_seed, SEED_SIZE, &err_code);
+
+  free(random_seed); // Libera la memoria asignada para la semilla aleatoria
 
   if (err_code != NO_ERROR)
   {
-    printf("Error al codificar el secreto en base32: %d\n", err_code);
+    printf("Error al generar el seed: %d\n", err_code);
     return NULL;
   }
 
-  return base32_secret;
+  saveSeed(base32, username);
+  return base32;
 }
 
 void generate_qr_code(const char *username, const char *base32_secret)
 {
   char url[512];
-  snprintf(url, sizeof(url), "otpauth://totp/%s?secret=%s&issuer=%s", username, base32_secret, ISSUER);
+  const char *issuer = "Example"; // Cambia esto por el nombre de tu servicio
+  const char *algorithm = "SHA1"; // Por defecto es SHA1, pero puedes cambiarlo
+  const int digits = 6;           // El número de dígitos en el código TOTP
+  const int period = 30;          // Período en segundos para TOTP
 
-  char qr_code_url[1024];
-  snprintf(qr_code_url, sizeof(qr_code_url), "https://api.qrserver.com/v1/create-qr-code/?data=%s&size=200x200", curl_easy_escape(NULL, url, 0));
+  // Formato de la URL: otpauth://TYPE/LABEL?PARAMETERS
+  snprintf(url, sizeof(url),
+           "otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=%s&digits=%d&period=%d",
+           issuer, username, base32_secret, issuer, algorithm, digits, period);
 
-  printf("Escanee el siguiente código QR con Google Authenticator:\n%s\n", qr_code_url);
-}
+  printf("URL para escanear con Google Authenticator: %s\n", url);
 
-char* generateSeed(const char *username)
-{
-  char *base32 = generate_random_secret();
-  saveSeed(base32, username);
-  free(base32);
-  return base32;
+  // Generar QR code usando qrencode
+  QRcode *qrcode = QRcode_encodeString(url, 0, QR_ECLEVEL_L, QR_MODE_8, 1);
+  if (qrcode != NULL)
+  {
+    for (int y = 0; y < qrcode->width; y++)
+    {
+      for (int x = 0; x < qrcode->width; x++)
+      {
+        printf("%s", qrcode->data[y * qrcode->width + x] & 1 ? "██" : "  ");
+      }
+      printf("\n");
+    }
+    QRcode_free(qrcode);
+  }
+  else
+  {
+    perror("Error al generar el código QR");
+  }
 }
 
 int main(int argc, char *argv[])
@@ -122,11 +180,11 @@ int main(int argc, char *argv[])
   scanf(" %c", &response);
   // Implementar la lógica basada en la respuesta
 
-  char* seed = generateSeed(username);
-  if (seed != NULL) 
+  char *seed = generateSeed(username);
+  if (seed != NULL)
   {
-
     generate_qr_code(username, seed);
+    free(seed);
   }
   else
   {
