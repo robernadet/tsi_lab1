@@ -121,7 +121,7 @@ char *generateSeed(const char *username)
 void generate_qr_code(const char *username, const char *base32_secret)
 {
   char url[512];
-  const char *issuer = "Example"; // Cambia esto por el nombre de tu servicio
+  const char *issuer = "Lab1"; // Cambia esto por el nombre de tu servicio
   const char *algorithm = "SHA1"; // Por defecto es SHA1, pero puedes cambiarlo
   const int digits = 6;           // El número de dígitos en el código TOTP
   const int period = 30;          // Período en segundos para TOTP
