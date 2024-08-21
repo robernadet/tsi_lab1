@@ -76,13 +76,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   msg[0].msg_style = PAM_PROMPT_ECHO_OFF;
   msg[0].msg = "Ingrese el código OTP: ";
-  pam_syslog(pamh, LOG_INFO, "Inicio de la conversación PAM");
 
   retval = conv->conv(1, (const struct pam_message **)&msg, &resp, pamh);
-  pam_syslog(pamh, LOG_INFO, "Fin de la conversación PAM");
   if (retval != PAM_SUCCESS || resp == NULL || resp[0].resp == NULL)
   {
-    pam_syslog(pamh, LOG_ERR, "Error en la conversación PAM al solicitar OTP");
+    pam_syslog(pamh, LOG_ERR, "Error en la conversación PAM al solicitar OTP, retval=%d", retval);
     free(seed);
     return PAM_AUTH_ERR;
   }
