@@ -54,6 +54,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   // Leer la seed del archivo
   pam_syslog(pamh, LOG_INFO, "Leyendo la seed para el usuario: %s", user);
   char *seed = getSeedForUser(user);
+  pam_syslog(pamh, LOG_INFO, "seed: %s", seed);
   if (seed == NULL)
   {
     pam_syslog(pamh, LOG_ERR, "No se encontró la seed para el usuario: %s", user);
@@ -62,7 +63,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   // Solicitar el código OTP al usuario
   pam_syslog(pamh, LOG_INFO, "Solicitando el código OTP al usuario");
-  struct pam_conv *conv;
+  struct pam_conv *conv = NULL;
   retval = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
   if (retval != PAM_SUCCESS || conv == NULL)
   {
@@ -77,6 +78,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   msg[0].msg_style = PAM_PROMPT_ECHO_OFF;
   msg[0].msg = "Ingrese el código OTP: ";
 
+  if (conv->conv == NULL)
+  {
+    pam_syslog(pamh, LOG_ERR, "La conversación PAM no está disponible");
+    free(seed);
+    return PAM_AUTH_ERR;
+  }
+
   retval = conv->conv(1, (const struct pam_message **)&msg, &resp, pamh);
   if (retval != PAM_SUCCESS || resp == NULL || resp[0].resp == NULL)
   {
@@ -87,8 +95,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   char otp_input[256];
   snprintf(otp_input, sizeof(otp_input), "%s", resp[0].resp);
-  free(resp[0].resp);
-  free(resp);
 
   // Generar el OTP usando el tiempo actual
   pam_syslog(pamh, LOG_INFO, "Generando el OTP para la comparación");
@@ -115,8 +121,6 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     pam_syslog(pamh, LOG_ERR, "El OTP ingresado es incorrecto");
   }
 
-  free(generated_otp);
-  free(seed);
   return auth_status;
 }
 
