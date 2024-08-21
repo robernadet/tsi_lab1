@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <security/pam_modules.h>
+#include <sys/syslog.h>
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
 #define PERIOD 30
@@ -45,21 +46,26 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   int retval = pam_get_user(pamh, &user, "Username: ");
   if (retval != PAM_SUCCESS || user == NULL)
   {
+    pam_syslog(pamh, LOG_ERR, "Error al obtener el nombre de usuario");
     return PAM_AUTH_ERR;
   }
 
   // Leer la seed del archivo
+  pam_syslog(pamh, LOG_INFO, "Leyendo la seed para el usuario: %s", user);
   char *seed = getSeedForUser(user);
   if (seed == NULL)
   {
+    pam_syslog(pamh, LOG_ERR, "No se encontró la seed para el usuario: %s", user);
     return PAM_AUTH_ERR;
   }
 
   // Solicitar el código OTP al usuario
+  pam_syslog(pamh, LOG_INFO, "Solicitando el código OTP al usuario");
   struct pam_conv *conv;
   retval = pam_get_item(pamh, PAM_CONV, (const void **)&conv);
   if (retval != PAM_SUCCESS || conv == NULL)
   {
+    pam_syslog(pamh, LOG_ERR, "Error al obtener la conversación PAM");
     free(seed);
     return PAM_AUTH_ERR;
   }
@@ -70,10 +76,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   msg[0].msg_style = PAM_PROMPT_ECHO_OFF;
   msg[0].msg = "Ingrese el código OTP: ";
 
-  // Corregido aquí: se usa 'const struct pam_message **' para el tercer argumento
   retval = conv->conv(1, (const struct pam_message **)&msg, &resp, pamh);
   if (retval != PAM_SUCCESS || resp == NULL || resp[0].resp == NULL)
   {
+    pam_syslog(pamh, LOG_ERR, "Error en la conversación PAM al solicitar OTP");
     free(seed);
     return PAM_AUTH_ERR;
   }
@@ -84,16 +90,19 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   free(resp);
 
   // Generar el OTP usando el tiempo actual
+  pam_syslog(pamh, LOG_INFO, "Generando el OTP para la comparación");
   cotp_error_t err_code = NO_ERROR;
   char *generated_otp = get_totp(seed, DIGITS, PERIOD, SHA1, &err_code);
 
   if (err_code != NO_ERROR || generated_otp == NULL)
   {
+    pam_syslog(pamh, LOG_ERR, "Error al generar el OTP");
     free(seed);
     return PAM_AUTH_ERR;
   }
 
   // Validar el código OTP
+  pam_syslog(pamh, LOG_INFO, "Validando el OTP ingresado");
   int auth_status = PAM_AUTH_ERR;
   if (strcmp(otp_input, generated_otp) == 0)
   {
