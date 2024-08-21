@@ -5,18 +5,27 @@ LDFLAGS = -shared -lpam -lcotp -lssl -lcrypto -lcurl -lqrencode -lgcrypt -Llib
 SRC_DIR = src
 OBJ_DIR = obj
 INCLUDE_DIR = include
-TARGET = pam_totp_2fa.so
+MODULE_TARGET = pam_totp_2fa.so
+EXEC_TARGET = main
 
 # Source files
 SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
-# Targets
-all: $(TARGET)
+# Object files
+MAIN_OBJ = $(OBJ_DIR)/main.o
+MODULE_OBJS = $(OBJ_DIR)/pam_totp_2fa.o
 
-# Build target
-$(TARGET): $(OBJS)
+# Targets
+all: $(MODULE_TARGET) $(EXEC_TARGET)
+
+# Build shared module
+$(MODULE_TARGET): $(MODULE_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^
+
+# Build executable
+$(EXEC_TARGET): $(MAIN_OBJ)
+	$(CC) $(MAIN_OBJ) -o $@ -lcotp -lssl -lcrypto -lcurl -lqrencode -lgcrypt
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
@@ -28,6 +37,6 @@ $(OBJ_DIR):
 
 # Clean up build files
 clean:
-	rm -rf $(OBJ_DIR) $(TARGET)
+	rm -rf $(OBJ_DIR) $(MODULE_TARGET) $(EXEC_TARGET)
 
 .PHONY: all clean
