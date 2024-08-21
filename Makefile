@@ -1,7 +1,8 @@
 # Variables
 CC = gcc
 CFLAGS = -Wall -Iinclude -fPIC
-LDFLAGS = -shared -lpam -lcotp -lssl -lcrypto -lcurl -lqrencode -lgcrypt -Llib
+LDFLAGS = -shared
+LIBS = -lpam -lcotp -lssl -lcrypto -lcurl -lqrencode -lgcrypt
 SRC_DIR = src
 OBJ_DIR = obj
 INCLUDE_DIR = include
@@ -21,11 +22,11 @@ all: $(MODULE_TARGET) $(EXEC_TARGET)
 
 # Build shared module
 $(MODULE_TARGET): $(MODULE_OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 # Build executable
 $(EXEC_TARGET): $(MAIN_OBJ)
-	$(CC) $(MAIN_OBJ) -o $@ -lcotp -lssl -lcrypto -lcurl -lqrencode -lgcrypt
+	$(CC) $(MAIN_OBJ) -o $@ $(LIBS)
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
