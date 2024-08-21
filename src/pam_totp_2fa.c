@@ -6,7 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <security/pam_modules.h>
-#include <sys/syslog.h>
+#include <security/pam_ext.h>
+#include <syslog.h>
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
 #define PERIOD 30
@@ -75,8 +76,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   msg[0].msg_style = PAM_PROMPT_ECHO_OFF;
   msg[0].msg = "Ingrese el código OTP: ";
+  pam_syslog(pamh, LOG_INFO, "Inicio de la conversación PAM");
 
   retval = conv->conv(1, (const struct pam_message **)&msg, &resp, pamh);
+  pam_syslog(pamh, LOG_INFO, "Fin de la conversación PAM");
   if (retval != PAM_SUCCESS || resp == NULL || resp[0].resp == NULL)
   {
     pam_syslog(pamh, LOG_ERR, "Error en la conversación PAM al solicitar OTP");
@@ -106,7 +109,12 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   int auth_status = PAM_AUTH_ERR;
   if (strcmp(otp_input, generated_otp) == 0)
   {
+    pam_syslog(pamh, LOG_INFO, "Autenticación exitosa para el usuario: %s", user);
     auth_status = PAM_SUCCESS;
+  }
+  else
+  {
+    pam_syslog(pamh, LOG_ERR, "El OTP ingresado es incorrecto");
   }
 
   free(generated_otp);
