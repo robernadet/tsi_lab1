@@ -9,22 +9,22 @@
 #include <qrencode.h>
 
 #define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
-#define SEED_SIZE 20 // Longitud de la salida HMAC-SHA1 es de 20 bytes (160 bits)
+#define SEED_SIZE 20 // Length of HMAC-SHA1 output is 20 bytes (160 bits)
 
-// Inicializa Libgcrypt
+// Initialize Libgcrypt
 void initialize_libgcrypt() {
   if (!gcry_check_version(GCRYPT_VERSION)) {
-    fprintf(stderr, "Error: versión de Libgcrypt incorrecta\n");
+    fprintf(stderr, "Error: incorrect Libgcrypt version\n");
     exit(EXIT_FAILURE);
   }
   gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
 }
 
-// Función para generar una semilla aleatoria segura de 20 bytes
+// Function to generate a secure random seed of 20 bytes
 char *generate_random_seed() {
   char *random_seed = malloc(SEED_SIZE);
   if (!random_seed) {
-    fprintf(stderr, "Error al asignar memoria para la semilla\n");
+    fprintf(stderr, "Error allocating memory for the seed\n");
     return NULL;
   }
   gcry_randomize(random_seed, SEED_SIZE, GCRY_STRONG_RANDOM);
@@ -36,11 +36,11 @@ void createSeedFileIfNotExists() {
   if (file == NULL) {
     file = fopen(GLOBAL_SEED_FILE, "w");
     if (file == NULL) {
-      perror("Error al crear el archivo para guardar las claves");
+      perror("Error creating the file to save the keys");
       return;
     }
     if (chmod(GLOBAL_SEED_FILE, S_IRUSR | S_IWUSR) != 0) {
-      perror("Error al establecer permisos en el archivo");
+      perror("Error setting permissions on the file");
     }
     fclose(file);
   } else {
@@ -53,14 +53,14 @@ void saveSeed(const char *base32, const char *username) {
   umask(077);
   FILE *file = fopen(GLOBAL_SEED_FILE, "a");
   if (file == NULL) {
-    perror("Error al abrir el archivo global para guardar el seed");
+    perror("Error opening the global file to save the seed");
     return;
   }
   if (fprintf(file, "%s,%s\n", username, base32) < 0) {
-    perror("Error al escribir el seed en el archivo global");
+    perror("Error writing the seed to the global file");
   }
   fclose(file);
-  printf("Seed guardado para el usuario %s en el archivo global.\n", username);
+  printf("Seed saved for user %s in the global file.\n", username);
 }
 
 char *generateSeed(const char *username) {
@@ -73,7 +73,7 @@ char *generateSeed(const char *username) {
   char *base32 = base32_encode((unsigned char *)random_seed, SEED_SIZE, &err_code);
   free(random_seed);
   if (err_code != NO_ERROR) {
-    printf("Error al generar el seed: %d\n", err_code);
+    printf("Error generating the seed: %d\n", err_code);
     return NULL;
   }
   saveSeed(base32, username);
@@ -91,7 +91,7 @@ void generate_qr_code(const char *username, const char *base32_secret) {
            "otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=%s&digits=%d&period=%d",
            issuer, username, base32_secret, issuer, algorithm, digits, period);
 
-  printf("URL para escanear con Google Authenticator: %s\n", url);
+  printf("URL to scan with Google Authenticator: %s\n", url);
 
   QRcode *qrcode = QRcode_encodeString(url, 0, QR_ECLEVEL_L, QR_MODE_8, 1);
   if (qrcode != NULL) {
@@ -103,7 +103,7 @@ void generate_qr_code(const char *username, const char *base32_secret) {
     }
     QRcode_free(qrcode);
   } else {
-    perror("Error al generar el código QR");
+    perror("Error generating the QR code");
   }
 }
 
@@ -114,7 +114,7 @@ const char *get_username() {
     if (pw) {
       username = pw->pw_name;
     } else {
-      perror("No se pudo obtener el nombre de usuario");
+      perror("Could not get the username");
       exit(EXIT_FAILURE);
     }
   }
@@ -123,23 +123,23 @@ const char *get_username() {
 
 void handle_user_response(const char *prompt) {
   char response;
-  printf("%s (s/n): ", prompt);
+  printf("%s (y/n): ", prompt);
   scanf(" %c", &response);
-  // Implementar la lógica basada en la respuesta
+  // Implement logic based on the response
 }
 
 int main(int argc, char *argv[]) {
   const char *username = get_username();
 
-  handle_user_response("¿Desea extender la ventana de tiempo para validar el token?");
-  handle_user_response("¿Desea activar el rate-limiting?");
+  handle_user_response("Do you want to extend the time window to validate the token?");
+  handle_user_response("Do you want to activate rate-limiting?");
 
   char *seed = generateSeed(username);
   if (seed != NULL) {
     generate_qr_code(username, seed);
     free(seed);
   } else {
-    printf("Hubo un problema al generar el seed.\n");
+    printf("There was a problem generating the seed.\n");
   }
 
   return 0;
