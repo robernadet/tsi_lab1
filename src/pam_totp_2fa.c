@@ -8,11 +8,7 @@
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <syslog.h>
-
-#define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
-#define PERIOD 30
-#define DIGITS 6
-#define PAM_CONST const
+#include "../include/utils.h"
 
 static int converse(pam_handle_t *pamh, int nargs,
                     PAM_CONST struct pam_message **message,

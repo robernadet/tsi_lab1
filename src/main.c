@@ -7,9 +7,7 @@
 #include <gcrypt.h>
 #include <cotp.h>
 #include <qrencode.h>
-
-#define GLOBAL_SEED_FILE "/etc/pam_seeds.txt"
-#define SEED_SIZE 20 // Length of HMAC-SHA1 output is 20 bytes (160 bits)
+#include "../include/utils.h"
 
 // Initialize Libgcrypt
 void initialize_libgcrypt() {
@@ -82,14 +80,10 @@ char *generateSeed(const char *username) {
 
 void generate_qr_code(const char *username, const char *base32_secret) {
   char url[512];
-  const char *issuer = "Lab1";
-  const char *algorithm = "SHA1";
-  const int digits = 6;
-  const int period = 30;
 
   snprintf(url, sizeof(url),
            "otpauth://totp/%s:%s?secret=%s&issuer=%s&algorithm=%s&digits=%d&period=%d",
-           issuer, username, base32_secret, issuer, algorithm, digits, period);
+           ISSUER, username, base32_secret, ISSUER, ALGORITHM, DIGITS, PERIOD);
 
   printf("URL to scan with Google Authenticator: %s\n", url);
 
@@ -121,19 +115,9 @@ const char *get_username() {
   return username;
 }
 
-void handle_user_response(const char *prompt) {
-  char response;
-  printf("%s (y/n): ", prompt);
-  scanf(" %c", &response);
-  // Implement logic based on the response
-}
-
 int main(int argc, char *argv[]) {
   const char *username = get_username();
-
-  handle_user_response("Do you want to extend the time window to validate the token?");
-  handle_user_response("Do you want to activate rate-limiting?");
-
+  printf("Generating seed for user: %s\n", username);
   char *seed = generateSeed(username);
   if (seed != NULL) {
     generate_qr_code(username, seed);
