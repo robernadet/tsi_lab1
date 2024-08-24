@@ -29,36 +29,21 @@ char *generate_random_seed() {
   return random_seed;
 }
 
-void createSeedFileIfNotExists() {
-  FILE *file = fopen(GLOBAL_SEED_FILE, "r");
-  if (file == NULL) {
-    file = fopen(GLOBAL_SEED_FILE, "w");
-    if (file == NULL) {
-      perror("Error creating the file to save the keys");
-      return;
-    }
-    if (chmod(GLOBAL_SEED_FILE, S_IRUSR | S_IWUSR) != 0) {
-      perror("Error setting permissions on the file");
-    }
-    fclose(file);
-  } else {
-    fclose(file);
-  }
-}
-
 void saveSeed(const char *base32, const char *username) {
-  createSeedFileIfNotExists();
-  umask(077);
-  FILE *file = fopen(GLOBAL_SEED_FILE, "a");
+  char filepath[256];
+  snprintf(filepath, sizeof(filepath), "/home/%s/.totp_seed", username);
+
+  umask(077); // Only owner can read/write
+  FILE *file = fopen(filepath, "w");
   if (file == NULL) {
-    perror("Error opening the global file to save the seed");
+    perror("Error opening the user's seed file");
     return;
   }
-  if (fprintf(file, "%s,%s\n", username, base32) < 0) {
-    perror("Error writing the seed to the global file");
+  if (fprintf(file, "%s\n", base32) < 0) {
+    perror("Error writing the seed to the user's seed file");
   }
   fclose(file);
-  printf("Seed saved for user %s in the global file.\n", username);
+  printf("Seed saved for user %s in %s.\n", username, filepath);
 }
 
 char *generateSeed(const char *username) {

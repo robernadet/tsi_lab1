@@ -45,23 +45,25 @@ static char *request_pass(pam_handle_t *pamh, int echocode, PAM_CONST char *prom
 }
 
 static char *getSeedForUser(const char *username) {
-  FILE *file = fopen(GLOBAL_SEED_FILE, "r");
+  char filepath[256];
+  snprintf(filepath, sizeof(filepath), "/home/%s/.totp_seed", username);
+
+  FILE *file = fopen(filepath, "r");
   if (file == NULL) {
     perror("Error opening seed file");
     return NULL;
   }
 
-  char line[256];
   char *seed = NULL;
-  while (fgets(line, sizeof(line), file)) {
-    char *file_user = strtok(line, ",");
-    char *file_seed = strtok(NULL, "\n");
-
-    if (file_user && file_seed && strcmp(file_user, username) == 0) {
-      seed = strdup(file_seed);
-      break;
-    }
+  size_t len = 0;
+  if (getline(&seed, &len, file) == -1) {
+    perror("Error reading seed from file");
+    fclose(file);
+    return NULL;
   }
+
+  // Remove newline character if present
+  seed[strcspn(seed, "\n")] = '\0';
 
   fclose(file);
   return seed;
