@@ -71,16 +71,15 @@ static char *getSeedForUser(const char *username) {
 
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv) {
   const char *user;
-  int retval = pam_get_user(pamh, &user, "Username: ");
-  if (retval != PAM_SUCCESS || user == NULL) {
+  int get_user = pam_get_user(pamh, &user, "Username: ");
+  if (get_user != PAM_SUCCESS || user == NULL) {
     pam_syslog(pamh, LOG_ERR, "Error getting username");
     return PAM_AUTH_ERR;
   }
 
   int *attempts = NULL;
-  int retval = pam_get_data(pamh, ATTEMPTS_KEY, (const void **)&attempts);
-  if (retval != PAM_SUCCESS || attempts == NULL)
-  {
+  int get_attemps = pam_get_data(pamh, ATTEMPTS_KEY, (const void **)&attempts);
+  if (get_attemps != PAM_SUCCESS || attempts == NULL) {
     // Inicializar el número de intentos si no existe
     int initial_attempts = 0;
     attempts = &initial_attempts;
