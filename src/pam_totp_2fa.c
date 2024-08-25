@@ -21,7 +21,7 @@ static int converse(pam_handle_t *pamh, int nargs,
   return conv->conv(nargs, message, response, conv->appdata_ptr);
 }
 
-static char *request_pass(pam_handle_t *pamh, int echocode, PAM_CONST char *prompt) {
+static char *request_code(pam_handle_t *pamh, int echocode, PAM_CONST char *prompt) {
   PAM_CONST struct pam_message msg = {.msg_style = echocode, .msg = prompt};
   PAM_CONST struct pam_message *msgs = &msg;
   struct pam_response *resp = NULL;
@@ -77,6 +77,16 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     return PAM_AUTH_ERR;
   }
 
+  int *attempts = NULL;
+  int retval = pam_get_data(pamh, ATTEMPTS_KEY, (const void **)&attempts);
+  if (retval != PAM_SUCCESS || attempts == NULL)
+  {
+    // Inicializar el número de intentos si no existe
+    int initial_attempts = 0;
+    attempts = &initial_attempts;
+    pam_set_data(pamh, ATTEMPTS_KEY, attempts, NULL);
+  }
+
   pam_syslog(pamh, LOG_INFO, "Reading seed for user: %s", user);
   char *seed = getSeedForUser(user);
   if (seed == NULL) {
@@ -85,7 +95,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   }
 
   pam_syslog(pamh, LOG_INFO, "Requesting OTP code from user");
-  char *otp_input = request_pass(pamh, PAM_PROMPT_ECHO_OFF, "Enter OTP code: ");
+  char *otp_input = request_code(pamh, PAM_PROMPT_ECHO_OFF, "Enter OTP code: ");
   if (otp_input == NULL) {
     pam_syslog(pamh, LOG_ERR, "Failed to get OTP code from user");
     free(seed);
@@ -110,6 +120,12 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     auth_status = PAM_SUCCESS;
   } else {
     pam_syslog(pamh, LOG_ERR, "Incorrect OTP entered");
+    (*attempts)++;
+    if (*attempts > RATE_LIMIT) {
+      pam_syslog(pamh, LOG_ERR, "Rate limit exceeded for user %s", user);
+      return PAM_AUTH_ERR;
+    }
+    pam_syslog(pamh, LOG_ERR, "Attempts: %d", *attempts);
   }
 
   free(otp_input);

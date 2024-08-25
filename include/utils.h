@@ -6,5 +6,7 @@
 #define DIGITS 6
 #define ALGORITHM "SHA1"
 #define ISSUER "Lab1"
+#define RATE_LIMIT 3
+#define ATTEMPTS_KEY "attempts"
 
 #endif
