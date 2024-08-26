@@ -8,10 +8,15 @@
 #include <cotp.h>
 #include <qrencode.h>
 #include "../include/utils.h"
+#include <security/pam_modules.h>
+#include <security/pam_ext.h>
+#include <security/pam_misc.h>
 
 // Initialize Libgcrypt
-void initialize_libgcrypt() {
-  if (!gcry_check_version(GCRYPT_VERSION)) {
+void initialize_libgcrypt()
+{
+  if (!gcry_check_version(GCRYPT_VERSION))
+  {
     fprintf(stderr, "Error: incorrect Libgcrypt version\n");
     exit(EXIT_FAILURE);
   }
@@ -19,9 +24,11 @@ void initialize_libgcrypt() {
 }
 
 // Function to generate a secure random seed of 20 bytes
-char *generate_random_seed() {
+char *generate_random_seed()
+{
   char *random_seed = malloc(SEED_SIZE);
-  if (!random_seed) {
+  if (!random_seed)
+  {
     fprintf(stderr, "Error allocating memory for the seed\n");
     return NULL;
   }
@@ -29,33 +36,39 @@ char *generate_random_seed() {
   return random_seed;
 }
 
-void saveSeed(const char *base32, const char *username) {
+void saveSeed(const char *base32, const char *username)
+{
   char filepath[256];
   snprintf(filepath, sizeof(filepath), "/home/%s/.totp_seed", username);
 
   umask(077); // Only owner can read/write
   FILE *file = fopen(filepath, "w");
-  if (file == NULL) {
+  if (file == NULL)
+  {
     perror("Error opening the user's seed file");
     return;
   }
-  if (fprintf(file, "%s\n", base32) < 0) {
+  if (fprintf(file, "%s\n", base32) < 0)
+  {
     perror("Error writing the seed to the user's seed file");
   }
   fclose(file);
   printf("Seed saved for user %s in %s.\n", username, filepath);
 }
 
-char *generateSeed(const char *username) {
+char *generateSeed(const char *username)
+{
   initialize_libgcrypt();
   char *random_seed = generate_random_seed();
-  if (!random_seed) {
+  if (!random_seed)
+  {
     return NULL;
   }
   cotp_error_t err_code = NO_ERROR;
   char *base32 = base32_encode((unsigned char *)random_seed, SEED_SIZE, &err_code);
   free(random_seed);
-  if (err_code != NO_ERROR) {
+  if (err_code != NO_ERROR)
+  {
     printf("Error generating the seed: %d\n", err_code);
     return NULL;
   }
@@ -63,7 +76,8 @@ char *generateSeed(const char *username) {
   return base32;
 }
 
-void generate_qr_code(const char *username, const char *base32_secret) {
+void generate_qr_code(const char *username, const char *base32_secret)
+{
   char url[512];
 
   snprintf(url, sizeof(url),
@@ -73,26 +87,36 @@ void generate_qr_code(const char *username, const char *base32_secret) {
   printf("URL to scan with Google Authenticator: %s\n", url);
 
   QRcode *qrcode = QRcode_encodeString(url, 0, QR_ECLEVEL_L, QR_MODE_8, 1);
-  if (qrcode != NULL) {
-    for (int y = 0; y < qrcode->width; y++) {
-      for (int x = 0; x < qrcode->width; x++) {
+  if (qrcode != NULL)
+  {
+    for (int y = 0; y < qrcode->width; y++)
+    {
+      for (int x = 0; x < qrcode->width; x++)
+      {
         printf("%s", qrcode->data[y * qrcode->width + x] & 1 ? "██" : "  ");
       }
       printf("\n");
     }
     QRcode_free(qrcode);
-  } else {
+  }
+  else
+  {
     perror("Error generating the QR code");
   }
 }
 
-const char *get_username() {
+const char *get_username()
+{
   const char *username = getlogin();
-  if (username == NULL) {
+  if (username == NULL)
+  {
     struct passwd *pw = getpwuid(getuid());
-    if (pw) {
+    if (pw)
+    {
       username = pw->pw_name;
-    } else {
+    }
+    else
+    {
       perror("Could not get the username");
       exit(EXIT_FAILURE);
     }
@@ -100,14 +124,91 @@ const char *get_username() {
   return username;
 }
 
-int main(int argc, char *argv[]) {
+// Custom conversation function to pass the password to PAM
+int custom_conv(int num_msg, const struct pam_message **msg,
+                struct pam_response **resp, void *appdata_ptr)
+{
+  struct pam_response *response;
+  if (num_msg <= 0)
+    return PAM_CONV_ERR;
+
+  response = (struct pam_response *)calloc(num_msg, sizeof(struct pam_response));
+  if (response == NULL)
+    return PAM_CONV_ERR;
+
+  for (int i = 0; i < num_msg; i++)
+  {
+    if (msg[i]->msg_style == PAM_PROMPT_ECHO_OFF)
+    {
+      response[i].resp = strdup((char *)appdata_ptr);
+      if (response[i].resp == NULL)
+      {
+        free(response);
+        return PAM_CONV_ERR;
+      }
+    }
+    else
+    {
+      response[i].resp = NULL;
+    }
+    response[i].resp_retcode = 0;
+  }
+  *resp = response;
+  return PAM_SUCCESS;
+}
+
+int authenticate_user(const char *username, const char *password)
+{
+  pam_handle_t *pamh = NULL;
+  struct pam_conv conv = {custom_conv, (void *)password};
+
+  int retval = pam_start("login", username, &conv, &pamh);
+  if (retval != PAM_SUCCESS)
+  {
+    fprintf(stderr, "PAM: pam_start failed\n");
+    return PAM_AUTH_ERR;
+  }
+
+  retval = pam_authenticate(pamh, 0);
+  if (retval != PAM_SUCCESS)
+  {
+    fprintf(stderr, "PAM: pam_authenticate failed\n");
+    pam_end(pamh, retval);
+    return PAM_AUTH_ERR;
+  }
+
+  retval = pam_acct_mgmt(pamh, 0);
+  if (retval != PAM_SUCCESS)
+  {
+    fprintf(stderr, "PAM: pam_acct_mgmt failed\n");
+    pam_end(pamh, retval);
+    return PAM_AUTH_ERR;
+  }
+
+  pam_end(pamh, retval);
+  return retval == PAM_SUCCESS ? PAM_SUCCESS : PAM_AUTH_ERR;
+}
+
+int main(int argc, char *argv[])
+{
   const char *username = get_username();
-  printf("Generating seed for user: %s\n", username);
+  char* password = getpass("Enter your password: ");
+
+  if (authenticate_user(username, password) != PAM_SUCCESS)
+  {
+    printf("Authentication failed.\n");
+    return EXIT_FAILURE;
+  }
+
+  printf("Password verified. Generating seed for user: %s\n", username);
   char *seed = generateSeed(username);
-  if (seed != NULL) {
+  if (seed != NULL)
+  {
     generate_qr_code(username, seed);
     free(seed);
-  } else {
+  }
+  else
+  {
     printf("There was a problem generating the seed.\n");
   }
 

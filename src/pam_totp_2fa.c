@@ -76,7 +76,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     pam_syslog(pamh, LOG_ERR, "Error getting username");
     return PAM_AUTH_ERR;
   }
-
+  
   pam_syslog(pamh, LOG_INFO, "Reading seed for user: %s", user);
   char *seed = getSeedForUser(user);
   if (seed == NULL) {
