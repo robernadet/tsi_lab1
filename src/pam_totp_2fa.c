@@ -71,6 +71,8 @@ static char *getSeedForUser(const char *username) {
 
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv) {
 
+  
+
   const char *user;
   int retval = pam_get_user(pamh, &user, "Username: ");
   if (retval != PAM_SUCCESS || user == NULL) {

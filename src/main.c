@@ -102,18 +102,18 @@ const char *get_username() {
 }
 
 //Encriptar
-void encrypt_seed(unsigned char key[tam_buff], size_t size_key,unsigned char encrypted[tam_buff],size_t size_encrypted){
+void encrypt_seed(unsigned char key[tam_buff], size_t size_key,unsigned char encrypted[tam_buff],size_t size_encrypted, unsigned char data[tam_buff], size_t size_data){
    gcry_cipher_hd_t handle;
 
-    unsigned char data[tam_buff] = "Hello, World!";  // Datos de la seed a cifrar
+    // unsigned char data[tam_buff] = "Hello, World!";  // Datos de la seed a cifrar
 
-    size_t data_len = sizeof(data);
+    size_t data_len = size_data;
     
     // Inicializa la biblioteca
     gcry_check_version(NULL);
 
     // Inicializa el manejador de cifrado (AES-128 en este caso)
-    gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CBC, 0);
+    gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CTR, 0);
     
     // Configura la clave
     gcry_cipher_setkey(handle, key, size_key);
@@ -128,7 +128,7 @@ void encrypt_seed(unsigned char key[tam_buff], size_t size_key,unsigned char enc
 }
 
 void print_encrypt(unsigned char  buff[tam_buff],size_t size_buff){
-        printf("Data: ");
+        printf("Data encriptada: ");
     for (size_t i = 0; i < size_buff; i++) {
         printf("%02x", buff[i]);
     }
@@ -150,7 +150,7 @@ void desencrypt_seed(unsigned char key[tam_buff], size_t size_key,unsigned char 
     gcry_check_version(NULL);
 
     // Inicializa el manejador de cifrado (AES-128 en este caso)
-    gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CBC, 0);
+    gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CTR, 0);
     
     // Configura la clave
     gcry_cipher_setkey(handle, key, size_key);
@@ -166,9 +166,35 @@ void desencrypt_seed(unsigned char key[tam_buff], size_t size_key,unsigned char 
 
 
 int main(int argc, char *argv[]) {
-  // const char *username = get_username();
-  // printf("Generating seed for user: %s\n", username);
-  // char *seed = generateSeed(username);
+  const char *username = get_username();
+  printf("Generating seed for user: %s\n", username);
+
+  char *seed = generateSeed(username);
+  printf("Generating seed : %s\n", seed);
+  
+    // Convertir la semilla a unsigned char
+    unsigned char seed_uc[tam_buff];
+    strncpy((char*)seed_uc, seed, tam_buff);
+
+    unsigned char key[tam_buff] = {"1906"};
+    unsigned char encrypted[tam_buff];
+    
+    // // Copiar la semilla a encrypted
+    // strncpy((char*)encrypted, seed, tam_buff);
+
+  
+  encrypt_seed(key, sizeof(key),encrypted,sizeof(encrypted),seed_uc, sizeof(seed_uc));
+  print_encrypt(encrypted,sizeof(encrypted));
+
+
+  
+  unsigned char decrypted[tam_buff];
+  // unsigned char key2[tam_buff] = {"1906"};
+  desencrypt_seed(key, sizeof(key),encrypted,sizeof(encrypted), decrypted, sizeof(decrypted));
+  // print_decrypt(decrypted);
+  printf("Decrypted data: %s\n", decrypted);
+
+
   // if (seed != NULL) {
   //   generate_qr_code(username, seed);
   //   free(seed);
@@ -178,18 +204,34 @@ int main(int argc, char *argv[]) {
 
   // return 0;
 
-  unsigned char key[tam_buff] = {"1906"};
-  unsigned char encrypted[tam_buff];
-  encrypt_seed(key, sizeof(key),encrypted,sizeof(encrypted));
-  print_encrypt(encrypted,sizeof(encrypted));
+
+  // unsigned char key[tam_buff] = {"1906"};
+  // unsigned char encrypted[tam_buff];
+  // encrypt_seed(key, sizeof(key),encrypted,sizeof(encrypted));
+  // print_encrypt(encrypted,sizeof(encrypted));
 
 
-  unsigned char decrypted[tam_buff];
-  unsigned char key2[tam_buff] = {"1906"};
-  desencrypt_seed(key2, sizeof(key2),encrypted,sizeof(encrypted), decrypted, sizeof(decrypted));
-  print_decrypt(decrypted);
+  // unsigned char decrypted[tam_buff];
+  // unsigned char key2[tam_buff] = {"1906"};
+  // desencrypt_seed(key2, sizeof(key2),encrypted,sizeof(encrypted), decrypted, sizeof(decrypted));
+  // print_decrypt(decrypted);
 
-  return 0;
+  // return 0;
+
+  // const char *username = get_username();
+  // printf("Generating seed for user: %s\n", username);
+
+  // char *seed = generateSeed(username);
+  
+  // if (seed != NULL) {
+  //   generate_qr_code(username, seed);
+  //   free(seed);
+  // } else {
+  //   printf("There was a problem generating the seed.\n");
+  // }
+
+  // return 0;
+
 
 
 }

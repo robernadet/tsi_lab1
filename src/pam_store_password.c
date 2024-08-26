@@ -29,3 +29,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv) {
     return PAM_SUCCESS;
 }
+
+
+
+
+
+// const char *password = NULL;
+//   int retval2 = pam_get_item(pamh, PAM_AUTHTOK, (const void **)&password);
+//   pam_syslog(pamh, LOG_INFO, "contraseña : %s", password);
