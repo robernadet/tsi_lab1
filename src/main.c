@@ -8,9 +8,11 @@
 #include <cotp.h>
 #include <qrencode.h>
 #include "../include/utils.h"
+#include "../include/encrypt_decrypt_seed.h"
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <security/pam_misc.h>
+
 
 // Initialize Libgcrypt
 void initialize_libgcrypt()
