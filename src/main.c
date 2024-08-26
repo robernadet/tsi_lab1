@@ -8,6 +8,7 @@
 #include <cotp.h>
 #include <qrencode.h>
 #include "../include/utils.h"
+// #include "crypt.c"
 
 // Initialize Libgcrypt
 void initialize_libgcrypt() {
@@ -100,16 +101,99 @@ const char *get_username() {
   return username;
 }
 
+//Encriptar
+void encrypt_seed(unsigned char key[16], size_t size_key,unsigned char encrypted[16],size_t size_encrypted){
+   gcry_cipher_hd_t handle;
+
+    unsigned char data[16] = "Hello, World!";  // Datos de la seed a cifrar
+
+    size_t data_len = sizeof(data);
+    
+    // Inicializa la biblioteca
+    gcry_check_version(NULL);
+
+    // Inicializa el manejador de cifrado (AES-128 en este caso)
+    gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CBC, 0);
+    
+    // Configura la clave
+    gcry_cipher_setkey(handle, key, size_key);
+    
+    // Cifra los datos
+    gcry_cipher_encrypt(handle, encrypted, size_encrypted, data, data_len);
+    
+    // Imprime los datos cifrados
+    // printf("Encrypted data: ");
+    // for (size_t i = 0; i < size_encrypted; i++) {
+    //     printf("%02x", encrypted[i]);
+    // }
+    // printf("\n");
+
+
+    // Cierra el manejador
+    gcry_cipher_close(handle);
+  
+}
+
+void print_buffer(unsigned char  buff[16],size_t size_buff){
+        printf("Encrypted data: ");
+    for (size_t i = 0; i < size_buff; i++) {
+        printf("%02x", buff[i]);
+    }
+    printf("\n");
+}
+
+void desencrypt_seed(unsigned char key[16], size_t size_key,unsigned char encrypted[16],size_t size_encrypted,unsigned char decrypted[16],size_t size_decrypted){
+    gcry_cipher_hd_t handle;
+    // unsigned char key[16] = {"1906"};  // Ejemplo de clave de 128 bits
+    // unsigned char encrypted[16] = {"c0f67e3fbfd58d0aab8925c9a4cd73eb"};
+    // unsigned char decrypted[16];  // Buffer para datos descifrados
+    size_t data_len = size_encrypted;
+    
+    // Inicializa la biblioteca
+    gcry_check_version(NULL);
+
+    // Inicializa el manejador de cifrado (AES-128 en este caso)
+    gcry_cipher_open(&handle, GCRY_CIPHER_AES128, GCRY_CIPHER_MODE_CBC, 0);
+    
+    // Configura la clave
+    gcry_cipher_setkey(handle, key, size_key);
+    
+    // Descifra los datos
+    gcry_cipher_decrypt(handle, decrypted, size_decrypted, encrypted, data_len);
+
+    // Cierra el manejador
+    gcry_cipher_close(handle);
+
+}
+
+//Encriptar c0f67e3fbfd58d0aab8925c9a4cd73eb
+
+
+
 int main(int argc, char *argv[]) {
-  const char *username = get_username();
-  printf("Generating seed for user: %s\n", username);
-  char *seed = generateSeed(username);
-  if (seed != NULL) {
-    generate_qr_code(username, seed);
-    free(seed);
-  } else {
-    printf("There was a problem generating the seed.\n");
-  }
+  // const char *username = get_username();
+  // printf("Generating seed for user: %s\n", username);
+  // char *seed = generateSeed(username);
+  // if (seed != NULL) {
+  //   generate_qr_code(username, seed);
+  //   free(seed);
+  // } else {
+  //   printf("There was a problem generating the seed.\n");
+  // }
+
+  // return 0;
+
+  unsigned char key[16] = {"1906"};
+  unsigned char encrypted[16];
+  encrypt_seed(key, sizeof(key),encrypted,sizeof(encrypted));
+  print_buffer(encrypted,sizeof(encrypted));
+
+
+  unsigned char decrypted[16];
+  desencrypt_seed(key, sizeof(key),encrypted,sizeof(encrypted),decrypted, sizeof(decrypted));
+  print_buffer(decrypted, sizeof(decrypted));
 
   return 0;
+
+
 }
