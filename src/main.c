@@ -124,10 +124,43 @@ const char *get_username()
   return username;
 }
 
-int authenticate_user(const char *username)
+// Custom conversation function to pass the password to PAM
+int custom_conv(int num_msg, const struct pam_message **msg,
+                struct pam_response **resp, void *appdata_ptr)
+{
+  struct pam_response *response;
+  if (num_msg <= 0)
+    return PAM_CONV_ERR;
+
+  response = (struct pam_response *)calloc(num_msg, sizeof(struct pam_response));
+  if (response == NULL)
+    return PAM_CONV_ERR;
+
+  for (int i = 0; i < num_msg; i++)
+  {
+    if (msg[i]->msg_style == PAM_PROMPT_ECHO_OFF)
+    {
+      response[i].resp = strdup((char *)appdata_ptr);
+      if (response[i].resp == NULL)
+      {
+        free(response);
+        return PAM_CONV_ERR;
+      }
+    }
+    else
+    {
+      response[i].resp = NULL;
+    }
+    response[i].resp_retcode = 0;
+  }
+  *resp = response;
+  return PAM_SUCCESS;
+}
+
+int authenticate_user(const char *username, const char *password)
 {
   pam_handle_t *pamh = NULL;
-  struct pam_conv conv = {misc_conv, NULL};
+  struct pam_conv conv = {custom_conv, (void *)password};
 
   int retval = pam_start("login", username, &conv, &pamh);
   if (retval != PAM_SUCCESS)
@@ -159,26 +192,15 @@ int authenticate_user(const char *username)
 int main(int argc, char *argv[])
 {
   const char *username = get_username();
+  char* password = getpass("Enter your password: ");
 
-  // Authenticate the user with PAM
-  if (authenticate_user(username) != PAM_SUCCESS)
+  if (authenticate_user(username, password) != PAM_SUCCESS)
   {
     printf("Authentication failed.\n");
     return EXIT_FAILURE;
   }
 
-  // Prompt the user for their password to use it for seed generation
-  char password[256];
-  printf("Enter your password for seed generation: ");
-  if (fgets(password, sizeof(password), stdin) == NULL)
-  {
-    printf("Error reading password\n");
-    return EXIT_FAILURE;
-  }
-  // Remove newline character from fgets
-  password[strcspn(password, "\n")] = '\0';
-
-  printf("Generating seed for user: %s\n", username);
+  printf("Password verified. Generating seed for user: %s\n", username);
   char *seed = generateSeed(username);
   if (seed != NULL)
   {

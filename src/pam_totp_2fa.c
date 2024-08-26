@@ -76,19 +76,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
     pam_syslog(pamh, LOG_ERR, "Error getting username");
     return PAM_AUTH_ERR;
   }
-
-  // Obtener la contraseña del usuario usando pam_get_authtok
-  const char *user_password = NULL;
-  retval = pam_get_authtok(pamh, PAM_AUTHTOK, &user_password, NULL);
-  if (retval != PAM_SUCCESS || user_password == NULL)
-  {
-    pam_syslog(pamh, LOG_ERR, "Error getting user password");
-    return PAM_AUTH_ERR;
-  }
-
-  pam_syslog(pamh, LOG_INFO, "password: %s", user_password);
   
-
   pam_syslog(pamh, LOG_INFO, "Reading seed for user: %s", user);
   char *seed = getSeedForUser(user);
   if (seed == NULL) {
