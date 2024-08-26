@@ -8,7 +8,8 @@
 #include <cotp.h>
 #include <qrencode.h>
 #include "../include/utils.h"
-#include <security/pam_appl.h>
+#include <security/pam_modules.h>
+#include <security/pam_ext.h>
 #include <security/pam_misc.h>
 
 // Initialize Libgcrypt
@@ -97,96 +98,95 @@ void generate_qr_code(const char *username, const char *base32_secret)
       printf("\n");
     }
     QRcode_free(qrcode);
-  } else {
-  perror("Error generating the QR code");
-}
+  }
+  else
+  {
+    perror("Error generating the QR code");
+  }
 }
 
-const char *get_username() {
+const char *get_username()
+{
   const char *username = getlogin();
-  if (username == NULL) {
+  if (username == NULL)
+  {
     struct passwd *pw = getpwuid(getuid());
-    if (pw) {
+    if (pw)
+    {
       username = pw->pw_name;
-    } else {
+    }
+    else
+    {
       perror("Could not get the username");
       exit(EXIT_FAILURE);
     }
   }
   return username;
 }
-// Conversación PAM para pedir la contraseña
-static struct pam_conv conv = {
-    misc_conv,
-    NULL};
 
-// Función para autenticar al usuario con PAM usando un servicio existente
-// Función para autenticar al usuario con PAM usando un servicio existente
-int authenticate_user(const char *username, char **user_password)
+int authenticate_user(const char *username)
 {
   pam_handle_t *pamh = NULL;
-  int retval;
+  struct pam_conv conv = {misc_conv, NULL};
 
-  // Usar el servicio "login" de PAM que ya está configurado
-  retval = pam_start("login", username, &conv, &pamh);
+  int retval = pam_start("login", username, &conv, &pamh);
   if (retval != PAM_SUCCESS)
   {
-    fprintf(stderr, "PAM start failed: %s\n", pam_strerror(pamh, retval));
-    return 0;
+    fprintf(stderr, "PAM: pam_start failed\n");
+    return PAM_AUTH_ERR;
   }
 
-  // Realizar la autenticación
   retval = pam_authenticate(pamh, 0);
   if (retval != PAM_SUCCESS)
   {
-    fprintf(stderr, "Authentication failed: %s\n", pam_strerror(pamh, retval));
+    fprintf(stderr, "PAM: pam_authenticate failed\n");
     pam_end(pamh, retval);
-    return 0;
+    return PAM_AUTH_ERR;
   }
 
-  retval = pam_acct_mgmt(pamh, 0); // Verificación de cuenta
+  retval = pam_acct_mgmt(pamh, 0);
   if (retval != PAM_SUCCESS)
   {
-    fprintf(stderr, "Account management failed: %s\n", pam_strerror(pamh, retval));
+    fprintf(stderr, "PAM: pam_acct_mgmt failed\n");
     pam_end(pamh, retval);
-    return 0;
+    return PAM_AUTH_ERR;
   }
 
-  // Obtener la contraseña del usuario
-  const char *authtok;
-  retval = pam_get_item(pamh, PAM_AUTHTOK, (const void **)&authtok);
-  if (retval != PAM_SUCCESS || authtok == NULL)
-  {
-    fprintf(stderr, "Failed to get authentication token: %s\n", pam_strerror(pamh, retval));
-    pam_end(pamh, retval);
-    return 0;
-  }
-
-  // Almacenar la contraseña obtenida
-  *user_password = strdup(authtok);
-
-  pam_end(pamh, PAM_SUCCESS);
-  return 1;
+  pam_end(pamh, retval);
+  return retval == PAM_SUCCESS ? PAM_SUCCESS : PAM_AUTH_ERR;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   const char *username = get_username();
 
-  char *user_password = NULL;
-
-  // Autenticar al usuario con PAM y obtener la contraseña
-  if (!authenticate_user(username, &user_password))
+  // Authenticate the user with PAM
+  if (authenticate_user(username) != PAM_SUCCESS)
   {
     printf("Authentication failed.\n");
     return EXIT_FAILURE;
   }
-  printf("password: %s", user_password);
+
+  // Prompt the user for their password to use it for seed generation
+  char password[256];
+  printf("Enter your password for seed generation: ");
+  if (fgets(password, sizeof(password), stdin) == NULL)
+  {
+    printf("Error reading password\n");
+    return EXIT_FAILURE;
+  }
+  // Remove newline character from fgets
+  password[strcspn(password, "\n")] = '\0';
+
   printf("Generating seed for user: %s\n", username);
   char *seed = generateSeed(username);
-  if (seed != NULL) {
+  if (seed != NULL)
+  {
     generate_qr_code(username, seed);
     free(seed);
-  } else {
+  }
+  else
+  {
     printf("There was a problem generating the seed.\n");
   }
 
