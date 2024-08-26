@@ -102,10 +102,10 @@ const char *get_username() {
 }
 
 //Encriptar
-void encrypt_seed(unsigned char key[16], size_t size_key,unsigned char encrypted[16],size_t size_encrypted){
+void encrypt_seed(unsigned char key[tam_buff], size_t size_key,unsigned char encrypted[tam_buff],size_t size_encrypted){
    gcry_cipher_hd_t handle;
 
-    unsigned char data[16] = "Hello, World!";  // Datos de la seed a cifrar
+    unsigned char data[tam_buff] = "Hello, World!";  // Datos de la seed a cifrar
 
     size_t data_len = sizeof(data);
     
@@ -121,32 +121,29 @@ void encrypt_seed(unsigned char key[16], size_t size_key,unsigned char encrypted
     // Cifra los datos
     gcry_cipher_encrypt(handle, encrypted, size_encrypted, data, data_len);
     
-    // Imprime los datos cifrados
-    // printf("Encrypted data: ");
-    // for (size_t i = 0; i < size_encrypted; i++) {
-    //     printf("%02x", encrypted[i]);
-    // }
-    // printf("\n");
-
 
     // Cierra el manejador
     gcry_cipher_close(handle);
   
 }
 
-void print_buffer(unsigned char  buff[16],size_t size_buff){
-        printf("Encrypted data: ");
+void print_encrypt(unsigned char  buff[tam_buff],size_t size_buff){
+        printf("Data: ");
     for (size_t i = 0; i < size_buff; i++) {
         printf("%02x", buff[i]);
     }
     printf("\n");
 }
 
-void desencrypt_seed(unsigned char key[16], size_t size_key,unsigned char encrypted[16],size_t size_encrypted,unsigned char decrypted[16],size_t size_decrypted){
+void print_decrypt(unsigned char  buff[tam_buff]){
+  printf("Decrypted data: %s\n", buff);
+}
+
+void desencrypt_seed(unsigned char key[tam_buff], size_t size_key,unsigned char encrypted[tam_buff],size_t size_encrypted,unsigned char decrypted[tam_buff],size_t size_decrypted){
     gcry_cipher_hd_t handle;
-    // unsigned char key[16] = {"1906"};  // Ejemplo de clave de 128 bits
-    // unsigned char encrypted[16] = {"c0f67e3fbfd58d0aab8925c9a4cd73eb"};
-    // unsigned char decrypted[16];  // Buffer para datos descifrados
+    // unsigned char key[tam_buff] = {"1906"};  // Ejemplo de clave de 128 bits
+    // unsigned char encrypted[tam_buff] = {"c0f67e3fbfd58d0aab8925c9a4cd73eb"};
+    // unsigned char decrypted[tam_buff];  // Buffer para datos descifrados
     size_t data_len = size_encrypted;
     
     // Inicializa la biblioteca
@@ -166,8 +163,6 @@ void desencrypt_seed(unsigned char key[16], size_t size_key,unsigned char encryp
 
 }
 
-//Encriptar c0f67e3fbfd58d0aab8925c9a4cd73eb
-
 
 
 int main(int argc, char *argv[]) {
@@ -183,15 +178,16 @@ int main(int argc, char *argv[]) {
 
   // return 0;
 
-  unsigned char key[16] = {"1906"};
-  unsigned char encrypted[16];
+  unsigned char key[tam_buff] = {"1906"};
+  unsigned char encrypted[tam_buff];
   encrypt_seed(key, sizeof(key),encrypted,sizeof(encrypted));
-  print_buffer(encrypted,sizeof(encrypted));
+  print_encrypt(encrypted,sizeof(encrypted));
 
 
-  unsigned char decrypted[16];
-  desencrypt_seed(key, sizeof(key),encrypted,sizeof(encrypted),decrypted, sizeof(decrypted));
-  print_buffer(decrypted, sizeof(decrypted));
+  unsigned char decrypted[tam_buff];
+  unsigned char key2[tam_buff] = {"1906"};
+  desencrypt_seed(key2, sizeof(key2),encrypted,sizeof(encrypted), decrypted, sizeof(decrypted));
+  print_decrypt(decrypted);
 
   return 0;
 

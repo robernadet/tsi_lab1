@@ -6,5 +6,6 @@
 #define DIGITS 6
 #define ALGORITHM "SHA1"
 #define ISSUER "Lab1"
+#define tam_buff 16 //tamaño de los buffer que usa libgcrypt
 
 #endif
