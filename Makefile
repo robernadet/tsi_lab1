@@ -9,25 +9,31 @@ INCLUDE_DIR = include
 MODULE_TARGET = pam_totp_2fa.so
 EXEC_TARGET = main
 INSTALL_DIR = /lib/x86_64-linux-gnu/security
+LIB_TARGET = libencrypt_decrypt_seed.a
 
 # Source files
-SRCS = $(wildcard $(SRC_DIR)/*.c)
+SRCS = $(wildcard $(SRC_DIR)/*.c) $(SRC_DIR)/encrypt_decrypt_seed.c
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
 # Object files
 MAIN_OBJ = $(OBJ_DIR)/main.o
 MODULE_OBJS = $(OBJ_DIR)/pam_totp_2fa.o
+LIB_OBJS = $(OBJ_DIR)/encrypt_decrypt_seed.o
 
 # Targets
-all: $(MODULE_TARGET) $(EXEC_TARGET)
+all: $(MODULE_TARGET) $(EXEC_TARGET) $(LIB_TARGET)
 
 # Build shared module
-$(MODULE_TARGET): $(MODULE_OBJS)
+$(MODULE_TARGET): $(MODULE_OBJS) $(LIB_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 # Build executable
-$(EXEC_TARGET): $(MAIN_OBJ)
-	$(CC) $(MAIN_OBJ) -o $@ $(LIBS)
+$(EXEC_TARGET): $(MAIN_OBJ) $(LIB_OBJS)
+	$(CC) $(MAIN_OBJ) $(LIB_OBJS) -o $@ $(LIBS)
+
+# Build static library
+$(LIB_TARGET): $(LIB_OBJS)
+	ar rcs $@ $^
 
 # Install the shared module
 install: $(MODULE_TARGET)
@@ -44,6 +50,6 @@ $(OBJ_DIR):
 
 # Clean up build files
 clean:
-	rm -rf $(OBJ_DIR) $(MODULE_TARGET) $(EXEC_TARGET)
+	rm -rf $(OBJ_DIR) $(MODULE_TARGET) $(EXEC_TARGET) $(LIB_TARGET)
 
 .PHONY: all clean install
