@@ -192,7 +192,6 @@ int main(int argc, char *argv[])
 
   printf("Password verified. Generating seed for user: %s\n", username);
   char *seed = generateSeed(username);
-  printf("Seed: %s\n", seed);
   //encrypted
   size_t encrypted_len;
   char *encrypted_seed = encrypt_seed(seed, password, &encrypted_len);
