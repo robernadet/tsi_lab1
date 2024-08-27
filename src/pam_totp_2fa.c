@@ -53,32 +53,41 @@ static char *request_pass(pam_handle_t *pamh, int echocode, PAM_CONST char *prom
   return ret;
 }
 
-static char *getSeedForUser(const char *username)
+char *getSeedForUser(const char *username, size_t *encrypted_len)
 {
   char filepath[256];
   snprintf(filepath, sizeof(filepath), "/home/%s/.totp_seed", username);
 
-  FILE *file = fopen(filepath, "r");
+  FILE *file = fopen(filepath, "rb");
   if (file == NULL)
   {
     perror("Error opening seed file");
     return NULL;
   }
 
-  char *seed = NULL;
-  size_t len = 0;
-  if (getline(&seed, &len, file) == -1)
+  // Obtener el tamaño del archivo
+  fseek(file, 0, SEEK_END);
+  *encrypted_len = ftell(file);
+  fseek(file, 0, SEEK_SET);
+
+  char *encrypted_seed = malloc(*encrypted_len);
+  if (!encrypted_seed)
   {
-    perror("Error reading seed from file");
+    perror("Error allocating memory for the seed");
     fclose(file);
     return NULL;
   }
 
-  // Remove newline character if present
-  seed[strcspn(seed, "\n")] = '\0';
+  if (fread(encrypted_seed, 1, *encrypted_len, file) != *encrypted_len)
+  {
+    perror("Error reading the seed from the user's seed file");
+    free(encrypted_seed);
+    fclose(file);
+    return NULL;
+  }
 
   fclose(file);
-  return seed;
+  return encrypted_seed;
 }
 
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
@@ -93,7 +102,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   // obtener password del user
   const char *password = NULL;
-  retval = pam_get_authtok(pamh, PAM_AUTHTOK, &password, "Password: ");
+  retval = pam_get_authtok(pamh, PAM_AUTHTOK, &password, "Password for seed: ");
   if (retval != PAM_SUCCESS || password == NULL)
   {
     pam_syslog(pamh, LOG_ERR, "Error getting password");
@@ -101,8 +110,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   }
 
   pam_syslog(pamh, LOG_INFO, "Reading seed for user: %s", user);
-  char *seed = getSeedForUser(user);
-  if (seed == NULL)
+  size_t encrypted_len;
+  char *encrypted_seed = getSeedForUser(user, &encrypted_len);
+  if (encrypted_seed == NULL)
   {
     pam_syslog(pamh, LOG_ERR, "Seed not found for user: %s", user);
     return PAM_AUTH_ERR;
@@ -110,13 +120,15 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   // decriptar seed
   pam_syslog(pamh, LOG_INFO, "Decrypting seed for user: %s", user);
-  size_t encrypted_len = strlen(seed);
-  char *decrypted_seed = decrypt_seed(seed, encrypted_len, password);
+  char *decrypted_seed = decrypt_seed(encrypted_seed, encrypted_len, password);
+  // Imprimir la longitud de la semilla descifrada
+  pam_syslog(pamh, LOG_INFO, "Decrypted seed length: %zu", strlen(decrypted_seed));
+  pam_syslog(pamh, LOG_INFO, "Decrypted seed: %s", decrypted_seed);
 
   if (decrypted_seed == NULL)
   {
     pam_syslog(pamh, LOG_ERR, "Error decrypting seed for user: %s", user);
-    free(seed);
+    free(encrypted_seed);
     return PAM_AUTH_ERR;
   }
 
@@ -125,7 +137,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   if (otp_input == NULL)
   {
     pam_syslog(pamh, LOG_ERR, "Failed to get OTP code from user");
-    free(seed);
+    free(encrypted_seed);
     free(decrypted_seed);
     return PAM_AUTH_ERR;
   }
@@ -133,7 +145,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
   pam_syslog(pamh, LOG_INFO, "Generating OTP for comparison");
   cotp_error_t err_code = NO_ERROR;
   char *generated_otp = get_totp(decrypted_seed, DIGITS, PERIOD, SHA1, &err_code);
-  free(seed);
+  free(encrypted_seed);
   free(decrypted_seed);
 
   if (err_code != NO_ERROR || generated_otp == NULL)
