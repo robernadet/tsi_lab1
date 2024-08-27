@@ -9,6 +9,7 @@
 #include <security/pam_ext.h>
 #include <syslog.h>
 #include "../include/utils.h"
+#include "../include/encrypt_decrypt_seed.h"
 
 static int converse(pam_handle_t *pamh, int nargs,
                     PAM_CONST struct pam_message **message,

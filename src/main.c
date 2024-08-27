@@ -14,27 +14,27 @@
 #include <security/pam_misc.h>
 
 
-// Initialize Libgcrypt
-void initialize_libgcrypt()
-{
-  if (!gcry_check_version(GCRYPT_VERSION))
-  {
-    fprintf(stderr, "Error: incorrect Libgcrypt version\n");
-    exit(EXIT_FAILURE);
-  }
-  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
-}
+// // Initialize Libgcrypt
+// void initialize_libgcrypt()
+// {
+//   if (!gcry_check_version(GCRYPT_VERSION))
+//   {
+//     fprintf(stderr, "Error: incorrect Libgcrypt version\n");
+//     exit(EXIT_FAILURE);
+//   }
+//   gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
+// }
 
 // Function to generate a secure random seed of 20 bytes
 char *generate_random_seed()
 {
-  char *random_seed = malloc(SEED_SIZE);
+  char *random_seed = malloc(SEED_SIZE_rand);
   if (!random_seed)
   {
     fprintf(stderr, "Error allocating memory for the seed\n");
     return NULL;
   }
-  gcry_randomize(random_seed, SEED_SIZE, GCRY_STRONG_RANDOM);
+  gcry_randomize(random_seed, SEED_SIZE_rand, GCRY_STRONG_RANDOM);
   return random_seed;
 }
 
@@ -50,6 +50,7 @@ void saveSeed(const char *base32, const char *username)
     perror("Error opening the user's seed file");
     return;
   }
+
   if (fprintf(file, "%s\n", base32) < 0)
   {
     perror("Error writing the seed to the user's seed file");
@@ -67,14 +68,14 @@ char *generateSeed(const char *username)
     return NULL;
   }
   cotp_error_t err_code = NO_ERROR;
-  char *base32 = base32_encode((unsigned char *)random_seed, SEED_SIZE, &err_code);
+  char *base32 = base32_encode((unsigned char *)random_seed, SEED_SIZE_rand, &err_code);
   free(random_seed);
   if (err_code != NO_ERROR)
   {
     printf("Error generating the seed: %d\n", err_code);
     return NULL;
   }
-  saveSeed(base32, username);
+  // saveSeed(base32, username);
   return base32;
 }
 
@@ -193,6 +194,42 @@ int authenticate_user(const char *username, const char *password)
 
 int main(int argc, char *argv[])
 {
+  //  initialize_libgcrypt();
+
+  // const char *password = "1906";
+  // const char *seed = "BQ6BBD6CAN5XMZT7T7UX2JWPJNITVRFS";
+
+  // size_t encrypted_len;
+  // char *encrypted_seed = encrypt_seed(seed, password, &encrypted_len);
+  // if (encrypted_seed)
+  // {
+  //   printf("Encrypted Seed: ");
+  //   for (size_t i = 0; i < encrypted_len; i++)
+  //   {
+  //     printf("%02X", (unsigned char)encrypted_seed[i]);
+  //   }
+  //   printf("\n");
+
+  //   char *decrypted_seed = decrypt_seed(encrypted_seed, encrypted_len, password);
+  //   if (decrypted_seed)
+  //   {
+  //     printf("Decrypted Seed: %s\n", decrypted_seed);
+  //     free(decrypted_seed);
+  //   }
+  //   free(encrypted_seed);
+  // }
+
+  // return 0;
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ ///////////////v1
+ 
+ 
   const char *username = get_username();
   char* password = getpass("Enter your password: ");
 
@@ -201,13 +238,45 @@ int main(int argc, char *argv[])
     printf("Authentication failed.\n");
     return EXIT_FAILURE;
   }
-
   printf("Password verified. Generating seed for user: %s\n", username);
+  
+  
   char *seed = generateSeed(username);
   if (seed != NULL)
   {
     generate_qr_code(username, seed);
+    printf("Seed: %s\n",seed);
+    //Encriptado
+    initialize_libgcrypt();
+    size_t encrypted_len;
+    char *encrypted_seed = encrypt_seed(seed, password, &encrypted_len);
+    if (encrypted_seed)
+    {
+      printf("Encrypted Seed: ");
+      for (size_t i = 0; i < encrypted_len; i++)
+      {
+        printf("%02X", (unsigned char)encrypted_seed[i]);
+      }
+      printf("\n");
+    
+      saveSeed(encrypted_seed, username);
+
+
+      char *decrypted_seed = decrypt_seed(encrypted_seed, encrypted_len, password);
+      if (decrypted_seed)
+      {
+        printf("Decrypted Seed: %s\n", decrypted_seed);
+        free(decrypted_seed);
+      }
+
+
+      free(encrypted_seed);
+    }
+    //
+
+
     free(seed);
+
   }
   else
   {
@@ -215,4 +284,41 @@ int main(int argc, char *argv[])
   }
 
   return 0;
+  
+
+
+
+
+
+
+  ////////v2
+
+
+  //   const char *username = get_username();
+  // char* password = getpass("Enter your password: ");
+
+  // if (authenticate_user(username, password) != PAM_SUCCESS)
+  // {
+  //   printf("Authentication failed.\n");
+  //   return EXIT_FAILURE;
+  // }
+  // printf("Password verified. Generating seed for user: %s\n", username);
+  
+  
+  // char *seed = generateSeed(username);
+  // if (seed != NULL)
+  // {
+  //   generate_qr_code(username, seed);
+  //   printf("Seed: %s\n",seed);
+  //   free(seed);
+
+  // }
+  // else
+  // {
+  //   printf("There was a problem generating the seed.\n");
+  // }
+
+  // return 0;
+
+
 }
