@@ -14,27 +14,16 @@
 #include <security/pam_misc.h>
 
 
-// Initialize Libgcrypt
-void initialize_libgcrypt()
-{
-  if (!gcry_check_version(GCRYPT_VERSION))
-  {
-    fprintf(stderr, "Error: incorrect Libgcrypt version\n");
-    exit(EXIT_FAILURE);
-  }
-  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
-}
-
 // Function to generate a secure random seed of 20 bytes
 char *generate_random_seed()
 {
-  char *random_seed = malloc(SEED_SIZE);
+  char *random_seed = malloc(SEED_SIZE_RANDOM);
   if (!random_seed)
   {
     fprintf(stderr, "Error allocating memory for the seed\n");
     return NULL;
   }
-  gcry_randomize(random_seed, SEED_SIZE, GCRY_STRONG_RANDOM);
+  gcry_randomize(random_seed, SEED_SIZE_RANDOM, GCRY_STRONG_RANDOM);
   return random_seed;
 }
 
@@ -67,14 +56,13 @@ char *generateSeed(const char *username)
     return NULL;
   }
   cotp_error_t err_code = NO_ERROR;
-  char *base32 = base32_encode((unsigned char *)random_seed, SEED_SIZE, &err_code);
+  char *base32 = base32_encode((unsigned char *)random_seed, SEED_SIZE_RANDOM, &err_code);
   free(random_seed);
   if (err_code != NO_ERROR)
   {
     printf("Error generating the seed: %d\n", err_code);
     return NULL;
   }
-  saveSeed(base32, username);
   return base32;
 }
 
@@ -204,6 +192,27 @@ int main(int argc, char *argv[])
 
   printf("Password verified. Generating seed for user: %s\n", username);
   char *seed = generateSeed(username);
+  printf("Seed: %s\n", seed);
+  //encrypted
+  size_t encrypted_len;
+  char *encrypted_seed = encrypt_seed(seed, password, &encrypted_len);
+  if (encrypted_seed)
+  {
+    printf("Encrypted Seed: ");
+    for (size_t i = 0; i < encrypted_len; i++)
+    {
+      printf("%02X", (unsigned char)encrypted_seed[i]);
+    }
+    printf("\n");
+
+    char *decrypted_seed = decrypt_seed(encrypted_seed, encrypted_len, password);
+    if (decrypted_seed)
+    {
+      printf("Decrypted Seed: %s\n", decrypted_seed);
+      free(decrypted_seed);
+    }
+    free(encrypted_seed);
+  }
   if (seed != NULL)
   {
     generate_qr_code(username, seed);
