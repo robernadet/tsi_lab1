@@ -16,7 +16,7 @@ OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
 # Object files
 MAIN_OBJ = $(OBJ_DIR)/main.o $(OBJ_DIR)/encrypt_decrypt_seed.o
-MODULE_OBJS = $(OBJ_DIR)/pam_totp_2fa.o
+MODULE_OBJS = $(OBJ_DIR)/pam_totp_2fa.o $(OBJ_DIR)/encrypt_decrypt_seed.o
 
 # Targets
 all: $(MODULE_TARGET) $(EXEC_TARGET)
