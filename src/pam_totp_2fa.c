@@ -102,7 +102,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   // obtener password del user
   const char *password = NULL;
-  retval = pam_get_authtok(pamh, PAM_AUTHTOK, &password, "Password for seed: ");
+  retval = pam_get_authtok(pamh, PAM_AUTHTOK, &password, NULL);
   if (retval != PAM_SUCCESS || password == NULL)
   {
     pam_syslog(pamh, LOG_ERR, "Error getting password");
