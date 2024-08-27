@@ -194,33 +194,3 @@ char *decrypt_seed(const char *encrypted_seed, size_t encrypted_len, const char 
 
   return decrypted_seed;
 }
-
-int main(int argc, char *argv[])
-{
-  initialize_libgcrypt();
-
-  const char *password = "your_password_here";
-  const char *seed = "your_seed_here";
-
-  size_t encrypted_len;
-  char *encrypted_seed = encrypt_seed(seed, password, &encrypted_len);
-  if (encrypted_seed)
-  {
-    printf("Encrypted Seed: ");
-    for (size_t i = 0; i < encrypted_len; i++)
-    {
-      printf("%02X", (unsigned char)encrypted_seed[i]);
-    }
-    printf("\n");
-
-    char *decrypted_seed = decrypt_seed(encrypted_seed, encrypted_len, password);
-    if (decrypted_seed)
-    {
-      printf("Decrypted Seed: %s\n", decrypted_seed);
-      free(decrypted_seed);
-    }
-    free(encrypted_seed);
-  }
-
-  return 0;
-}
