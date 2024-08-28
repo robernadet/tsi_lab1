@@ -2,7 +2,7 @@
 CC = gcc
 CFLAGS = -Wall -Iinclude -fPIC
 LDFLAGS = -shared
-LIBS = -lpam -lcotp -lssl -lcrypto -lcurl -lqrencode -lgcrypt -lpam_misc
+LIBS = -lpam -lcotp -lqrencode -lgcrypt -lpam_misc
 SRC_DIR = src
 OBJ_DIR = obj
 INCLUDE_DIR = include
