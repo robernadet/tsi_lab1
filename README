@@ -1,0 +1,40 @@
+
+### Paso 1: Instalación de Dependencias
+git clone https://github.com/paolostivanin/libcotp.git
+cd libcotp
+mkdir build && cd $_
+cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+make
+make install
+
+sudo apt-get update
+sudo apt-get install -y libpam0g-dev libqrencode-dev libgcrypt20-dev libpam-misc
+
+### Paso 2: Instalación del Módulo pam_totp_2fa
+cd /ruta/a/tu/modulo  # ej: cd tsi_lab1
+make
+sudo make install
+ls /lib/security/pam_totp_2fa.so  # o ls /lib/x86_64-linux-gnu/security/pam_totp_2fa.so
+
+### Paso 3: Configuración de PAM
+sudo nano /etc/pam.d/sshd
+Agrega después de @include common-auth:
+  auth required pam_totp_2fa.so
+
+### Paso 4: Configuración del Servicio SSH
+sudo nano /etc/ssh/sshd_config
+ChallengeResponseAuthentication yes
+PasswordAuthentication yes
+sudo systemctl restart sshd
+
+### Paso 5: Configuración Inicial del Usuario
+cd /ruta/a/tu/modulo  # ej: cd tsi_lab1
+./main
+
+### Paso 6: Escanear el Código QR
+Escanea el código QR generado con Google Authenticator.
+
+### Paso 7: Conexión por SSH
+ip a  # Obtener la Dirección IP
+ssh nombre_usuario@IP_maquina
+# Proceso de Autenticación: Ingresa la contraseña y el código TOTP.
