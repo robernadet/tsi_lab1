@@ -1,8 +1,6 @@
 #ifndef ENCRYPT_DECRYPT_SEED_H
 #define ENCRYPT_DECRYPT_SEED_H
 
-#include <stddef.h>
-
 // Function to initialize the libgcrypt library
 void initialize_libgcrypt();
 

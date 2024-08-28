@@ -1,11 +1,6 @@
 #ifndef FILE_MANAGER_H
 #define FILE_MANAGER_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
 // Function to save the encrypted seed to a file
 void saveEncryptedSeedToFile(char *encrypted_seed, size_t encrypted_len, const char *username);
 

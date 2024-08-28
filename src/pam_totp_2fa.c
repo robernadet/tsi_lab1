@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <cotp.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 #include <string.h>
-#include <unistd.h>
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <syslog.h>
