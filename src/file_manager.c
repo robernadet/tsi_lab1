@@ -1,6 +1,7 @@
 #include "../include/file_manager.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 void saveEncryptedSeedToFile(char *encrypted_seed, size_t encrypted_len, const char *username)
 {
