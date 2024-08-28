@@ -37,6 +37,7 @@ install: $(MODULE_TARGET)
 	@mkdir -p $(INSTALL_DIR)
 	@cp $(MODULE_TARGET) $(INSTALL_DIR)/
 	@strip $(INSTALL_DIR)/$(MODULE_TARGET)
+	@ln -sf $(INSTALL_DIR)/$(MODULE_TARGET) /lib/$(MODULE_TARGET)
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
