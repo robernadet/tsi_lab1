@@ -23,27 +23,33 @@ all: $(MODULE_TARGET) $(EXEC_TARGET)
 
 # Build shared module
 $(MODULE_TARGET): $(MODULE_OBJS)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	@echo "Building shared module: $(MODULE_TARGET)"
+	@$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 # Build executable
 $(EXEC_TARGET): $(MAIN_OBJ)
-	$(CC) $(MAIN_OBJ) -o $@ $(LIBS)
+	@echo "Building executable: $(EXEC_TARGET)"
+	@$(CC) $(MAIN_OBJ) -o $@ $(LIBS)
 
 # Install the shared module
 install: $(MODULE_TARGET)
-	mkdir -p $(INSTALL_DIR)
-	cp $(MODULE_TARGET) $(INSTALL_DIR)/
+	@echo "Installing module: $(MODULE_TARGET) to $(INSTALL_DIR)"
+	@mkdir -p $(INSTALL_DIR)
+	@cp $(MODULE_TARGET) $(INSTALL_DIR)/
+	@strip $(INSTALL_DIR)/$(MODULE_TARGET)
 
 # Compile source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+	@echo "Compiling $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 # Create object directory if it doesn't exist
 $(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+	@mkdir -p $(OBJ_DIR)
 
 # Clean up build files
 clean:
-	rm -rf $(OBJ_DIR) $(MODULE_TARGET) $(EXEC_TARGET)
+	@echo "Cleaning up..."
+	@rm -rf $(OBJ_DIR) $(MODULE_TARGET) $(EXEC_TARGET)
 
 .PHONY: all clean install

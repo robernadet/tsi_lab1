@@ -1,4 +1,3 @@
-#include "../include/pam_totp_2fa.h"
 #include <stdio.h>
 #include <cotp.h>
 #include <stdlib.h>
@@ -11,6 +10,8 @@
 #include "../include/utils.h"
 #include "../include/encrypt_decrypt_seed.h"
 #include "../include/file_manager.h"
+
+#define PAM_CONST const
 
 static int converse(pam_handle_t *pamh, int nargs,
                     PAM_CONST struct pam_message **message,
