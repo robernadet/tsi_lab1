@@ -15,8 +15,8 @@ SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
 # Object files
-MAIN_OBJ = $(OBJ_DIR)/main.o $(OBJ_DIR)/encrypt_decrypt_seed.o
-MODULE_OBJS = $(OBJ_DIR)/pam_totp_2fa.o $(OBJ_DIR)/encrypt_decrypt_seed.o
+MAIN_OBJ = $(OBJ_DIR)/main.o $(OBJ_DIR)/encrypt_decrypt_seed.o $(OBJ_DIR)/file_manager.o
+MODULE_OBJS = $(OBJ_DIR)/pam_totp_2fa.o $(OBJ_DIR)/encrypt_decrypt_seed.o $(OBJ_DIR)/file_manager.o
 
 # Targets
 all: $(MODULE_TARGET) $(EXEC_TARGET)

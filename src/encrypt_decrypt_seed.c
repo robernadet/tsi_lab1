@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "../include/utils.h"
 
 void initialize_libgcrypt()
@@ -13,6 +15,19 @@ void initialize_libgcrypt()
   }
   gcry_control(GCRYCTL_DISABLE_SECMEM, 0); // Disable secure memory
   gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
+}
+
+// Function to generate a secure random seed of 20 bytes
+char *generate_random_seed()
+{
+  char *random_seed = malloc(SEED_SIZE_RANDOM);
+  if (!random_seed)
+  {
+    fprintf(stderr, "Error allocating memory for the seed\n");
+    return NULL;
+  }
+  gcry_randomize(random_seed, SEED_SIZE_RANDOM, GCRY_STRONG_RANDOM);
+  return random_seed;
 }
 
 void derive_key_from_password(const char *password, unsigned char *key, size_t keylen)
@@ -128,7 +143,7 @@ char *decrypt_seed(const char *encrypted_seed, size_t encrypted_len, const char 
   derive_key_from_password(password, key, keylen);
 
   unsigned char iv[blklen];
-  memcpy(iv, encrypted_seed, blklen); // Extraer el IV del inicio
+  memcpy(iv, encrypted_seed, blklen); // Extract IV from the start
 
   size_t padded_seed_len = encrypted_len - blklen;
   char *decrypted_seed_padded = malloc(padded_seed_len);
@@ -138,7 +153,7 @@ char *decrypt_seed(const char *encrypted_seed, size_t encrypted_len, const char 
     return NULL;
   }
 
-  // Inicializar el contexto de cifrado
+  // Initialize the cipher context
   err = gcry_cipher_open(&handle, GCRY_CIPHER_AES256, GCRY_CIPHER_MODE_CBC, 0);
   if (err)
   {
@@ -147,7 +162,7 @@ char *decrypt_seed(const char *encrypted_seed, size_t encrypted_len, const char 
     return NULL;
   }
 
-  // Establecer la clave y el IV
+  // Set key and IV
   err = gcry_cipher_setkey(handle, key, keylen);
   if (err)
   {
@@ -166,7 +181,7 @@ char *decrypt_seed(const char *encrypted_seed, size_t encrypted_len, const char 
     return NULL;
   }
 
-  // Descifrar la semilla
+  // Decrypt the seed
   err = gcry_cipher_decrypt(handle, decrypted_seed_padded, padded_seed_len, encrypted_seed + blklen, padded_seed_len);
   if (err)
   {
@@ -178,9 +193,10 @@ char *decrypt_seed(const char *encrypted_seed, size_t encrypted_len, const char 
 
   gcry_cipher_close(handle);
 
-  // Remover el padding
+  // Remove padding
   size_t padding_len = decrypted_seed_padded[padded_seed_len - 1];
-  char *decrypted_seed = malloc(SEED_SIZE + 1);
+  size_t seed_len = padded_seed_len - padding_len;
+  char *decrypted_seed = malloc(seed_len + 1); // +1 for null terminator
   if (!decrypted_seed)
   {
     fprintf(stderr, "Error allocating memory for final decrypted seed\n");
@@ -188,8 +204,8 @@ char *decrypt_seed(const char *encrypted_seed, size_t encrypted_len, const char 
     return NULL;
   }
 
-  memcpy(decrypted_seed, decrypted_seed_padded, SEED_SIZE);
-  decrypted_seed[SEED_SIZE] = '\0'; // Asegurarse de que esté terminada en NULL
+  memcpy(decrypted_seed, decrypted_seed_padded, seed_len);
+  decrypted_seed[seed_len] = '\0'; // Ensure null termination
   free(decrypted_seed_padded);
 
   return decrypted_seed;

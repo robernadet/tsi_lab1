@@ -1,51 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <string.h>
-#include <unistd.h>
 #include <pwd.h>
-#include <gcrypt.h>
 #include <cotp.h>
 #include <qrencode.h>
-#include "../include/utils.h"
-#include "../include/encrypt_decrypt_seed.h"
 #include <security/pam_modules.h>
 #include <security/pam_ext.h>
 #include <security/pam_misc.h>
-
-
-// Function to generate a secure random seed of 20 bytes
-char *generate_random_seed()
-{
-  char *random_seed = malloc(SEED_SIZE_RANDOM);
-  if (!random_seed)
-  {
-    fprintf(stderr, "Error allocating memory for the seed\n");
-    return NULL;
-  }
-  gcry_randomize(random_seed, SEED_SIZE_RANDOM, GCRY_STRONG_RANDOM);
-  return random_seed;
-}
-
-void saveSeed(char *encrypted_seed, size_t encrypted_len, const char *username) {
-  char filepath[256];
-  snprintf(filepath, sizeof(filepath), "/home/%s/.totp_seed", username);
-
-  umask(077); // Only owner can read/write
-  FILE *file = fopen(filepath, "wb");
-  if (file == NULL)
-  {
-    perror("Error opening the user's seed file");
-    return;
-  }
-
-  if (fwrite(encrypted_seed, 1, encrypted_len, file) != encrypted_len)
-  {
-    perror("Error writing the seed to the user's seed file");
-  }
-  fclose(file);
-  printf("Seed saved for user %s in %s.\n", username, filepath);
-}
+#include "../include/utils.h"
+#include "../include/encrypt_decrypt_seed.h"
+#include "../include/file_manager.h"
 
 char *generateSeed(const char *username)
 {
@@ -195,7 +156,7 @@ int main(int argc, char *argv[])
   //encrypted
   size_t encrypted_len;
   char *encrypted_seed = encrypt_seed(seed, password, &encrypted_len);
-  saveSeed(encrypted_seed,encrypted_len ,username);
+  saveEncryptedSeedToFile(encrypted_seed, encrypted_len, username);
   free(encrypted_seed);
   if (seed != NULL)
   {
