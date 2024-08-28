@@ -10,6 +10,7 @@
 #include <syslog.h>
 #include "../include/utils.h"
 #include "../include/encrypt_decrypt_seed.h"
+#include "../include/file_manager.h"
 
 static int converse(pam_handle_t *pamh, int nargs,
                     PAM_CONST struct pam_message **message,
@@ -53,43 +54,6 @@ static char *request_pass(pam_handle_t *pamh, int echocode, PAM_CONST char *prom
   return ret;
 }
 
-char *getSeedForUser(const char *username, size_t *encrypted_len)
-{
-  char filepath[256];
-  snprintf(filepath, sizeof(filepath), "/home/%s/.totp_seed", username);
-
-  FILE *file = fopen(filepath, "rb");
-  if (file == NULL)
-  {
-    perror("Error opening seed file");
-    return NULL;
-  }
-
-  // Obtener el tamaño del archivo
-  fseek(file, 0, SEEK_END);
-  *encrypted_len = ftell(file);
-  fseek(file, 0, SEEK_SET);
-
-  char *encrypted_seed = malloc(*encrypted_len);
-  if (!encrypted_seed)
-  {
-    perror("Error allocating memory for the seed");
-    fclose(file);
-    return NULL;
-  }
-
-  if (fread(encrypted_seed, 1, *encrypted_len, file) != *encrypted_len)
-  {
-    perror("Error reading the seed from the user's seed file");
-    free(encrypted_seed);
-    fclose(file);
-    return NULL;
-  }
-
-  fclose(file);
-  return encrypted_seed;
-}
-
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, const char **argv)
 {
   const char *user;
@@ -111,7 +75,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc, cons
 
   pam_syslog(pamh, LOG_INFO, "Reading seed for user: %s", user);
   size_t encrypted_len;
-  char *encrypted_seed = getSeedForUser(user, &encrypted_len);
+  char *encrypted_seed = getEncryptedSeedForUser(user, &encrypted_len);
   if (encrypted_seed == NULL)
   {
     pam_syslog(pamh, LOG_ERR, "Seed not found for user: %s", user);
@@ -182,3 +146,70 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 {
   return PAM_SUCCESS;
 }
+
+// PAM_EXTERN int pam_sm_chauthtok(pam_handle_t *pamh, int flags, int argc, const char **argv)
+// {
+//   const char *user;
+//   int retval = pam_get_user(pamh, &user, "Username: ");
+//   if (retval != PAM_SUCCESS || user == NULL)
+//   {
+//     pam_syslog(pamh, LOG_ERR, "Error getting username");
+//     return PAM_USER_UNKNOWN;
+//   }
+
+//   const char *old_password;
+//   retval = pam_get_authtok(pamh, PAM_OLDAUTHTOK, &old_password, "Old Password: ");
+//   if (retval != PAM_SUCCESS || old_password == NULL)
+//   {
+//     pam_syslog(pamh, LOG_ERR, "Error getting old password");
+//     return PAM_AUTHTOK_ERR;
+//   }
+
+//   const char *new_password;
+//   retval = pam_get_authtok(pamh, PAM_AUTHTOK, &new_password, "New Password: ");
+//   if (retval != PAM_SUCCESS || new_password == NULL)
+//   {
+//     pam_syslog(pamh, LOG_ERR, "Error getting new password");
+//     return PAM_AUTHTOK_ERR;
+//   }
+
+//   // Verificar que la semilla anterior pueda ser descifrada con la contraseña antigua
+//   size_t encrypted_len;
+//   char *encrypted_seed = getEncryptedSeedForUser(user, &encrypted_len);
+//   if (encrypted_seed == NULL)
+//   {
+//     pam_syslog(pamh, LOG_ERR, "Seed not found for user: %s", user);
+//     return PAM_AUTHTOK_ERR;
+//   }
+
+//   char *decrypted_seed = decrypt_seed(encrypted_seed, encrypted_len, old_password);
+//   if (decrypted_seed == NULL)
+//   {
+//     pam_syslog(pamh, LOG_ERR, "Error decrypting seed with old password for user: %s", user);
+//     free(encrypted_seed);
+//     return PAM_AUTHTOK_ERR;
+//   }
+
+
+//   // Encriptar la nueva semilla con la nueva contraseña
+//   size_t new_encrypted_len;
+//   char *new_encrypted_seed = encrypt_seed(decrypted_seed, new_password, &new_encrypted_len);
+//   if (new_encrypted_seed == NULL)
+//   {
+//     pam_syslog(pamh, LOG_ERR, "Error encrypting new seed for user: %s", user);
+//     free(encrypted_seed);
+//     free(decrypted_seed);
+//     return PAM_AUTHTOK_ERR;
+//   }
+
+//   // Guardar la nueva semilla encriptada
+//   saveEncryptedSeedToFile(new_encrypted_seed, new_encrypted_len, user);
+//   pam_syslog(pamh, LOG_INFO, "Updated seed for user: %s after password change", user);
+
+//   // Liberar memoria
+//   free(encrypted_seed);
+//   free(decrypted_seed);
+//   free(new_encrypted_seed);
+
+//   return PAM_SUCCESS;
+// }

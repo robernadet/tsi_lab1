@@ -15,4 +15,6 @@ char *encrypt_seed(const char *seed, const char *password, size_t *encrypted_len
 // Function to decrypt a seed
 char *decrypt_seed(const char *encrypted_seed, size_t encrypted_len, const char *password);
 
+char *generate_random_seed();
+
 #endif // ENCRYPT_DECRYPT_SEED_H
