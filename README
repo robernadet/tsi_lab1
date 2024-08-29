@@ -1,5 +1,8 @@
 
 ### Paso 1: Instalación de Dependencias
+sudo apt-get update
+sudo apt-get install -y libpam0g-dev libqrencode-dev libgcrypt20-dev
+
 git clone https://github.com/paolostivanin/libcotp.git
 cd libcotp
 mkdir build && cd $_
@@ -7,14 +10,11 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make
 make install
 
-sudo apt-get update
-sudo apt-get install -y libpam0g-dev libqrencode-dev libgcrypt20-dev libpam-misc
-
 ### Paso 2: Instalación del Módulo pam_totp_2fa
 cd /ruta/a/tu/modulo  # ej: cd tsi_lab1
 make
 sudo make install
-ls /lib/security/pam_totp_2fa.so  # o ls /lib/x86_64-linux-gnu/security/pam_totp_2fa.so
+ls /lib/security/pam_totp_2fa.so  o ls /lib/x86_64-linux-gnu/security/pam_totp_2fa.so
 
 ### Paso 3: Configuración de PAM
 sudo nano /etc/pam.d/sshd
